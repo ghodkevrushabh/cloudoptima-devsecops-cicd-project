@@ -1,12 +1,10 @@
 ---
 - name: Deploy demo-payment-api-2 Application
-  hosts: app
+  hosts: all
   become: true
-
   vars:
     app_name: "demo-payment-api-2"
-    app_port: 8080
-
+    app_port: 80
   tasks:
     - name: Update apt cache
       ansible.builtin.apt:
@@ -36,3 +34,12 @@
         restart_policy: always
         published_ports:
           - "{{ app_port }}:80"
+
+    - name: Run Prometheus Node Exporter Container
+      community.docker.docker_container:
+        name: "node-exporter"
+        image: "prom/node-exporter:latest"
+        state: started
+        restart_policy: always
+        published_ports:
+          - "9100:9100"
