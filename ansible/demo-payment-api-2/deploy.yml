@@ -1,0 +1,38 @@
+---
+- name: Deploy demo-payment-api-2 Application
+  hosts: app
+  become: true
+
+  vars:
+    app_name: "demo-payment-api-2"
+    app_port: 8080
+
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Install Docker
+      ansible.builtin.apt:
+        name: docker.io
+        state: present
+
+    - name: Ensure Docker service is running
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Pull application image
+      community.docker.docker_image:
+        name: nginx:alpine
+        source: pull
+
+    - name: Run application container
+      community.docker.docker_container:
+        name: "{{ app_name }}"
+        image: nginx:alpine
+        state: started
+        restart_policy: always
+        published_ports:
+          - "{{ app_port }}:80"

@@ -1,0 +1,9 @@
+aws_region	= "eu-north-1"
+app_name       = "demo-payment-api-2"
+environment    = "dev"
+app_port       = 8080
+instance_type  = "t3.micro"
+vpc_name       = "cloudoptima"
+subnet_id      = "subnet-05a93b54d68e26b16"
+key_name       = "cloudoptima-key"
+ssh_cidr       = "10.0.0.0/16"
