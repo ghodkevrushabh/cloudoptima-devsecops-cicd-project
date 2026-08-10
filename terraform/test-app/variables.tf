@@ -1,0 +1,9 @@
+variable "aws_region" { type = string }
+variable "app_name" { type = string }
+variable "environment" { type = string }
+variable "app_port" { type = number }
+variable "instance_type" { type = string }
+variable "vpc_name" { type = string }
+variable "subnet_id" { type = string }
+variable "key_name" { type = string }
+variable "ssh_cidr" { type = string }
