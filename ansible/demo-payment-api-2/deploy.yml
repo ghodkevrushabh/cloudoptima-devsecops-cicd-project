@@ -7,7 +7,7 @@
     app_name: "demo-payment-api-2"
     app_port: 80
     container_port: 5000
-    app_source: "{{ app_source }}"
+    app_source: "{{ playbook_dir }}/../../application/"
 
   tasks:
 
@@ -34,7 +34,7 @@
 
     - name: Copy application source
       ansible.builtin.copy:
-        src: "{{ app_source }}/"
+        src: "{{ app_source }}"
         dest: "/opt/{{ app_name }}/"
         mode: "0644"
 
@@ -86,4 +86,3 @@
         restart_policy: always
         published_ports:
           - "9100:9100"
-
