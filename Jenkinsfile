@@ -1,3 +1,4 @@
+```groovy
 pipeline {
     agent any
 
@@ -5,88 +6,77 @@ pipeline {
         string(
             name: 'APP_NAME',
             defaultValue: 'demo-payment-api-2',
-            description: 'Name of the application to deploy'
+            description: 'Application infrastructure directory name'
         )
 
         string(
             name: 'APP_REPO_URL',
-            defaultValue: '',
-            description: 'Git repository URL containing the application source code'
+            defaultValue: 'https://github.com/ghodkevrushabh/demo-payment-api.git',
+            description: 'Application source repository'
         )
     }
 
     environment {
         TF_DIR = "terraform/${params.APP_NAME}"
         ANSIBLE_DIR = "ansible/${params.APP_NAME}"
-        APP_DIR = "application"
     }
 
     stages {
 
-        stage('Checkout Platform Repository') {
+        stage('Checkout Infrastructure Code') {
             steps {
                 checkout scm
             }
         }
 
-        stage('Validate Parameters') {
-            steps {
-                script {
-                    if (!params.APP_REPO_URL?.trim()) {
-                        error("APP_REPO_URL is required.")
-                    }
-
-                    if (!params.APP_NAME?.trim()) {
-                        error("APP_NAME is required.")
-                    }
-                }
-            }
-        }
-
         stage('Checkout Application Source') {
             steps {
-                dir("${APP_DIR}") {
-                    git branch: 'main',
+                dir('application') {
+                    deleteDir()
+
+                    git(
+                        branch: 'main',
                         url: "${params.APP_REPO_URL}"
+                    )
                 }
             }
         }
 
-        stage('Validate Application Source') {
+        stage('Validate Application') {
             steps {
                 sh '''
                     set -e
 
-                    echo "===== APPLICATION SOURCE ====="
-                    find "${APP_DIR}" -maxdepth 2 -type f \
-                        -not -path "*/.git/*" | sort
+                    echo "=== Application files ==="
+                    ls -la application/
 
-                    echo
-                    echo "===== APPLICATION SIZE ====="
-                    du -sh "${APP_DIR}"
+                    echo "=== Python syntax check ==="
+                    python3 -m py_compile application/app.py
+
+                    echo "Application validation passed."
                 '''
             }
         }
 
-        stage('SecOps: IaC Scan (Checkov)') {
+        stage('SecOps: IaC Scan - Checkov') {
             steps {
                 sh '''
-                    checkov \
-                        -d "${TF_DIR}" \
-                        --soft-fail
+                    set -e
+                    checkov -d "${TF_DIR}" --soft-fail
                 '''
             }
         }
 
-        stage('SecOps: Infrastructure Vulnerability Scan (Trivy)') {
+        stage('SecOps: IaC Scan - Trivy') {
             steps {
                 sh '''
+                    set -e
                     trivy config "${TF_DIR}"
-            '''
+                '''
             }
         }
 
-        stage('Infracost: Cost Estimation') {
+        stage('FinOps: Infracost') {
             steps {
                 withCredentials([
                     string(
@@ -95,90 +85,202 @@ pipeline {
                     )
                 ]) {
                     sh '''
-                        set -e 
-                        
-                        echo "===== INFRACOST AUTH CHECK ====="
-                        
-                        if [ -z "$INFRACOST_CLI_AUTHENTICATION_TOKEN" ]; then
-                        echo "ERROR: Infracost token is not available"
-                        exit 1
-                        fi
-                        
-                        echo "Infracost token: SET"
+                        set -e
 
-                        infracost doctor
-                                               
-                        echo "===== INFRACOST SCAN ====="
-                        infracost scan --path "${TF_DIR}"
+                        echo "=== Infracost authentication check ==="
+
+                        if [ -z "$INFRACOST_CLI_AUTHENTICATION_TOKEN" ]; then
+                            echo "ERROR: Infracost credential was not injected."
+                            exit 1
+                        fi
+
+                        echo "Infracost token is available."
+
+                        infracost scan "${TF_DIR}"
                     '''
                 }
             }
         }
 
-        stage('Terraform: Provision Infrastructure') {
+        stage('Terraform: Init') {
             steps {
                 dir("${TF_DIR}") {
                     sh '''
+                        set -e
                         terraform init
-                        terraform apply -auto-approve
                     '''
                 }
             }
         }
 
-        stage('Ansible: Configure & Deploy Application') {
+        stage('Terraform: Validate') {
+            steps {
+                dir("${TF_DIR}") {
+                    sh '''
+                        set -e
+                        terraform validate
+                    '''
+                }
+            }
+        }
+
+        stage('Terraform: Plan') {
+            steps {
+                dir("${TF_DIR}") {
+                    sh '''
+                        set -e
+                        terraform plan -out=tfplan
+                    '''
+                }
+            }
+        }
+
+        stage('Terraform: Apply') {
+            steps {
+                dir("${TF_DIR}") {
+                    sh '''
+                        set -e
+                        terraform apply -auto-approve tfplan
+                    '''
+                }
+            }
+        }
+
+        stage('Get Application IP') {
+            steps {
+                dir("${TF_DIR}") {
+                    script {
+                        env.APP_PRIVATE_IP = sh(
+                            script: 'terraform output -raw app_private_ip',
+                            returnStdout: true
+                        ).trim()
+
+                        env.APP_PUBLIC_IP = sh(
+                            script: 'terraform output -raw app_public_ip',
+                            returnStdout: true
+                        ).trim()
+                    }
+
+                    sh '''
+                        echo "Application Private IP: ${APP_PRIVATE_IP}"
+                        echo "Application Public IP: ${APP_PUBLIC_IP}"
+                    '''
+                }
+            }
+        }
+
+        stage('Prepare Ansible Inventory') {
             steps {
                 dir("${ANSIBLE_DIR}") {
                     sh '''
                         set -e
 
-                        echo "===== GET APPLICATION IP ====="
+                        cat > inventory.ini <<EOF
+[all]
+${APP_PRIVATE_IP} ansible_user=ubuntu ansible_ssh_private_key_file=/var/lib/jenkins/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no'
 
-                        APP_IP=$(cd "${WORKSPACE}/${TF_DIR}" && \
-                            terraform output -raw app_private_ip)
-
-                        echo "Target Application Private IP: ${APP_IP}"
-
-                        echo "Waiting for SSH service..."
-                        sleep 10
-
-                        echo "===== GENERATE ANSIBLE INVENTORY ====="
-
-                        cat > inventory.ini <<EOF_INVENTORY
 [app]
-${APP_IP} ansible_user=ubuntu ansible_ssh_private_key_file=/var/lib/jenkins/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no'
-EOF_INVENTORY
+${APP_PRIVATE_IP} ansible_user=ubuntu ansible_ssh_private_key_file=/var/lib/jenkins/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+EOF
 
-                        echo "===== TEST SSH CONNECTIVITY ====="
+                        echo "=== Generated inventory ==="
+                        cat inventory.ini
+                    '''
+                }
+            }
+        }
 
-                        ansible \
-                            all \
+        stage('Wait for SSH') {
+            steps {
+                sh '''
+                    set +e
+
+                    echo "Waiting for application server SSH..."
+
+                    for i in $(seq 1 30); do
+                        ansible all \
+                            -i "${ANSIBLE_DIR}/inventory.ini" \
+                            -m ping && exit 0
+
+                        echo "SSH not ready. Attempt $i/30"
+                        sleep 10
+                    done
+
+                    echo "ERROR: Application server SSH did not become available."
+                    exit 1
+                '''
+            }
+        }
+
+        stage('Ansible: Syntax Check') {
+            steps {
+                dir("${ANSIBLE_DIR}") {
+                    sh '''
+                        set -e
+                        ansible-playbook \
                             -i inventory.ini \
-                            -m ping
+                            deploy.yml \
+                            --syntax-check
+                    '''
+                }
+            }
+        }
 
-                        echo "===== RUN ANSIBLE DEPLOYMENT ====="
+        stage('Ansible: Deploy Application') {
+            steps {
+                dir("${ANSIBLE_DIR}") {
+                    sh '''
+                        set -e
 
                         ansible-playbook \
                             -i inventory.ini \
                             deploy.yml \
-                            -e "app_source=${WORKSPACE}/${APP_DIR}"
+                            -e "app_source=${WORKSPACE}/application"
                     '''
                 }
+            }
+        }
+
+        stage('Deployment Verification') {
+            steps {
+                sh '''
+                    set -e
+
+                    echo "=== Application health check ==="
+
+                    for i in $(seq 1 12); do
+                        if curl -fsS "http://${APP_PUBLIC_IP}/" >/tmp/app_response.txt; then
+                            echo "Application is responding:"
+                            cat /tmp/app_response.txt
+                            exit 0
+                        fi
+
+                        echo "Application not ready. Attempt $i/12"
+                        sleep 5
+                    done
+
+                    echo "ERROR: Application health check failed."
+                    exit 1
+                '''
             }
         }
     }
 
     post {
         success {
-            echo 'CloudOptima deployment completed successfully.'
+            echo "=========================================="
+            echo "CloudOptima deployment successful"
+            echo "Application: ${params.APP_NAME}"
+            echo "Public IP: ${env.APP_PUBLIC_IP}"
+            echo "=========================================="
         }
 
         failure {
-            echo 'CloudOptima deployment failed.'
-        }
-
-        always {
-            echo 'Pipeline execution completed.'
+            echo "=========================================="
+            echo "CloudOptima deployment FAILED"
+            echo "Check the failed pipeline stage."
+            echo "=========================================="
         }
     }
 }
+```
