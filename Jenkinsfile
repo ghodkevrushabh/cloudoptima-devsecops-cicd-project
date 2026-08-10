@@ -106,7 +106,7 @@ pipeline {
                 dir("${TF_DIR}") {
                     sh '''
                         set -e
-                        terraform init
+                        terraform init -reconfigure
                     '''
                 }
             }
