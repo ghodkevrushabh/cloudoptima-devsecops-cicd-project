@@ -91,12 +91,15 @@ pipeline {
                 withCredentials([
                     string(
                         credentialsId: 'infracost-api-key',
-                        variable: 'INFRACOST_API_KEY'
+                        variable: 'INFRACOST_CLI_AUTHENTICATION_TOKEN'
                     )
                 ]) {
                     sh '''
-                        infracost breakdown \
-                            --path "${TF_DIR}"
+                        echo "Infracost token injected: ${INFRACOST_CLI_AUTHENTICATION_TOKEN:+YES}"
+
+                        infracost auth whoami
+
+                        infracost scan --path "${TF_DIR}"
                     '''
                 }
             }
