@@ -1,11 +1,17 @@
+```yaml
 ---
-- name: Deploy demo-payment-api-2 Application
-  hosts: all
+- name: Deploy CloudOptima Application
+  hosts: app
   become: true
+
   vars:
     app_name: "demo-payment-api-2"
     app_port: 80
+    container_port: 5000
+    app_source: "{{ app_source }}"
+
   tasks:
+
     - name: Update apt cache
       ansible.builtin.apt:
         update_cache: true
@@ -21,21 +27,59 @@
         state: started
         enabled: true
 
-    - name: Pull application image
+    - name: Create application directory
+      ansible.builtin.file:
+        path: "/opt/{{ app_name }}"
+        state: directory
+        mode: "0755"
+
+    - name: Copy application source
+      ansible.builtin.copy:
+        src: "{{ app_source }}/"
+        dest: "/opt/{{ app_name }}/"
+        mode: "0644"
+
+    - name: Create application Dockerfile
+      ansible.builtin.copy:
+        dest: "/opt/{{ app_name }}/Dockerfile"
+        mode: "0644"
+        content: |
+          FROM python:3.11-slim
+
+          WORKDIR /app
+
+          COPY requirements.txt .
+
+          RUN pip install --no-cache-dir -r requirements.txt
+
+          COPY . .
+
+          EXPOSE 5000
+
+          CMD ["python", "app.py"]
+
+    - name: Build application Docker image
       community.docker.docker_image:
-        name: nginx:alpine
-        source: pull
+        name: "{{ app_name }}:latest"
+        build:
+          path: "/opt/{{ app_name }}"
+        source: build
+
+    - name: Stop old application container
+      community.docker.docker_container:
+        name: "{{ app_name }}"
+        state: absent
 
     - name: Run application container
       community.docker.docker_container:
         name: "{{ app_name }}"
-        image: nginx:alpine
+        image: "{{ app_name }}:latest"
         state: started
         restart_policy: always
         published_ports:
-          - "{{ app_port }}:80"
+          - "{{ app_port }}:{{ container_port }}"
 
-    - name: Run Prometheus Node Exporter Container
+    - name: Run Prometheus Node Exporter
       community.docker.docker_container:
         name: "node-exporter"
         image: "prom/node-exporter:latest"
@@ -43,3 +87,4 @@
         restart_policy: always
         published_ports:
           - "9100:9100"
+```
