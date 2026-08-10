@@ -95,10 +95,20 @@ pipeline {
                     )
                 ]) {
                     sh '''
-                        echo "Infracost token injected: ${INFRACOST_CLI_AUTHENTICATION_TOKEN:+YES}"
+                        set -e 
+                        
+                        echo "===== INFRACOST AUTH CHECK ====="
+                        
+                        if [ -z "$INFRACOST_CLI_AUTHENTICATION_TOKEN" ]; then
+                        echo "ERROR: Infracost token is not available"
+                        exit 1
+                        fi
+                        
+                        echo "Infracost token: SET"
 
-                        infracost auth whoami
-
+                        infracost doctor
+                                               
+                        echo "===== INFRACOST SCAN ====="
                         infracost scan --path "${TF_DIR}"
                     '''
                 }
