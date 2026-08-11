@@ -57,6 +57,22 @@ pipeline {
             }
         }
 
+       stage('SecOps: Secret Scan - GitLeaks') {
+           steps {
+               sh '''
+                   set -e
+
+                   echo "=== GitLeaks Secret Scan ==="
+
+                   gitleaks detect \
+                   --source . \
+                   --no-banner
+
+                   echo "GitLeaks scan passed."
+               '''
+            }
+        }
+
         stage('SecOps: IaC Scan - Checkov') {
             steps {
                 sh '''
