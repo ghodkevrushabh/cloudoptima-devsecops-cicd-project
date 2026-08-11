@@ -73,12 +73,12 @@ pipeline {
                           echo "=== SonarQube Code Analysis ==="
                           echo "Scanner: ${scannerHome}/bin/sonar-scanner"
 
-                          "${scannerHome}/bin/sonar-scanner" \
-                            -Dsonar.projectKey=cloudoptima \
-                            -Dsonar.projectName=CloudOptima \
-                            -Dsonar.sources=application \
-                            -Dsonar.host.url=http://localhost:9000 \
-                            -Dsonar.token="\$SONAR_TOKEN"
+                          "${scannerHome}/bin/sonar-scanner" \\
+                            -Dsonar.projectKey=cloudoptima \\
+                            -Dsonar.projectName=CloudOptima \\
+                            -Dsonar.sources=application \\
+                            -Dsonar.host.url=http://localhost:9000 \\
+                            -Dsonar.token="\$SONAR_TOKEN" \\
                             -Dsonar.scm.exclusions.disabled=true
                       """
                    }
