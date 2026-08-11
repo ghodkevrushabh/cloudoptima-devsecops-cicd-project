@@ -70,7 +70,7 @@ pipeline {
                       sh '''
                           set -e
 
-                          sonar-scanner \
+                          "${scannerHome}/bin/sonar-scanner" \
                             -Dsonar.projectKey=cloudoptima \
                             -Dsonar.projectName=CloudOptima \
                             -Dsonar.sources=application \
