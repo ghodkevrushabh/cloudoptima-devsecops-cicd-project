@@ -64,6 +64,12 @@ resource "aws_instance" "app_server" {
   key_name                    = var.key_name
   associate_public_ip_address = true
 
+  metadata_options {
+    http_endpoint                 = "enabled"
+    http_tokens                   = "required"
+    http_put_response_hop_limit   = 1
+  }
+
   tags = {
     Name        = var.app_name
     Environment = var.environment
