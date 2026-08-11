@@ -37,6 +37,25 @@ pipeline {
                         branch: 'main',
                         url: "${params.APP_REPO_URL}"
                     )
+                    sh '''
+                        set -e
+
+                        echo "=== Application Repository ==="
+                        git remote -v
+                        git branch --show-current
+                        git log -1 --oneline
+
+                        echo "=== Application Files ==="
+                        find . -maxdepth 2 -type f \
+                        ! -path './.git/*' \
+                        ! -path './__pycache__/*' \
+                        | sort
+
+                        test -f app.py
+                        test -f requirements.txt
+
+                        echo "Application repository validation passed."
+                    '''                             
                 }
             }
         }
