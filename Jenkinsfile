@@ -86,12 +86,13 @@ pipeline {
                    ]) {
                       sh '''
                           set -e
+                          echo "=== SonarQube Code Analysis ==="
 
                           "${scannerHome}/bin/sonar-scanner" \
                             -Dsonar.projectKey=cloudoptima \
                             -Dsonar.projectName=CloudOptima \
                             -Dsonar.sources=application \
-                            -Dsonar.host.url="\$SONAR_HOST_URL" \
+                            -Dsonar.host.url=http://localhost:9000 \
                             -Dsonar.token="\$SONAR_TOKEN"
                       '''
                    }
