@@ -55,7 +55,32 @@ pipeline {
                     echo "Application validation passed."
                 '''
             }
-        }
+       }
+        
+       
+       stage('SecOps: Code Quality - SonarQube') {
+           steps {
+               withSonarQubeEnv('SonarQube') {
+                   withCredentials([
+                       string(
+                           credentialsId: 'sonarqube-token',
+                           variable: 'SONAR_TOKEN'
+                       )
+                   ]) {
+                      sh '''
+                          set -e
+
+                          sonar-scanner \
+                            -Dsonar.projectKey=cloudoptima \
+                            -Dsonar.projectName=CloudOptima \
+                            -Dsonar.sources=application \
+                            -Dsonar.host.url="$SONAR_HOST_URL" \
+                            -Dsonar.token="$SONAR_TOKEN"
+                      '''
+                   }
+               }
+           }
+       }
 
        stage('SecOps: Secret Scan - GitLeaks') {
            steps {
