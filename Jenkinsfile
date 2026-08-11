@@ -55,23 +55,7 @@ pipeline {
                     echo "Application validation passed."
                 '''
             }
-       }
-        
-       stage('Debug SonarQube Tool') {
-           steps {
-               script {
-                    def scannerHome = tool 'SonarQubeScanner'
-
-                    sh """
-                        echo "scannerHome=${scannerHome}"
-                        echo "PATH=\$PATH"
-                        ls -lah "${scannerHome}"
-                        ls -lah "${scannerHome}/bin"
-                        "${scannerHome}/bin/sonar-scanner" --version
-                    """
-                }
-            }
-       }     
+       }    
        
        stage('SecOps: Code Quality - SonarQube') {
            steps {
@@ -84,9 +68,10 @@ pipeline {
                            variable: 'SONAR_TOKEN'
                        )
                    ]) {
-                      sh '''
+                      sh """
                           set -e
                           echo "=== SonarQube Code Analysis ==="
+                          echo "Scanner: ${scannerHome}/bin/sonar-scanner"
 
                           "${scannerHome}/bin/sonar-scanner" \
                             -Dsonar.projectKey=cloudoptima \
@@ -94,7 +79,7 @@ pipeline {
                             -Dsonar.sources=application \
                             -Dsonar.host.url=http://localhost:9000 \
                             -Dsonar.token="\$SONAR_TOKEN"
-                      '''
+                      """
                    }
                }
            }
