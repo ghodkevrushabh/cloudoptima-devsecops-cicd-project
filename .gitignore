@@ -1,0 +1,31 @@
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.plan
+crash.log
+crash.*.log
+
+# Terraform CLI lock file
+# Keep .terraform.lock.hcl if you want provider versions pinned.
+# Do NOT ignore it.
+
+# Ansible
+**/inventory.ini
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+
+# Environment / secrets
+.env
+*.pem
+*.key
+
+# Jenkins / temporary files
+*.tmp
+*.log
