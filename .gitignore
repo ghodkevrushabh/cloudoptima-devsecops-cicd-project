@@ -10,7 +10,8 @@ crash.*.log
 # Terraform CLI lock file
 # Keep .terraform.lock.hcl if you want provider versions pinned.
 # Do NOT ignore it.
-
+# SonarQube
+.scannerwork/
 # Ansible
 **/inventory.ini
 
