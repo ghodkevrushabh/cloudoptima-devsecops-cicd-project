@@ -57,6 +57,21 @@ pipeline {
             }
        }
         
+       stage('Debug SonarQube Tool') {
+           steps {
+               script {
+                    def scannerHome = tool 'SonarQubeScanner'
+
+                    sh """
+                        echo "scannerHome=${scannerHome}"
+                        echo "PATH=\$PATH"
+                        ls -lah "${scannerHome}"
+                        ls -lah "${scannerHome}/bin"
+                        "${scannerHome}/bin/sonar-scanner" --version
+                    """
+                }
+            }
+       }     
        
        stage('SecOps: Code Quality - SonarQube') {
            steps {
