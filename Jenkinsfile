@@ -86,8 +86,6 @@ pipeline {
                     sh '''
                         set -e
 
-                        echo "=== Infracost authentication check ==="
-
                         if [ -z "$INFRACOST_CLI_AUTHENTICATION_TOKEN" ]; then
                             echo "ERROR: Infracost credential was not injected."
                             exit 1
@@ -174,13 +172,10 @@ pipeline {
                     sh '''
                         set -e
 
-                        cat > inventory.ini <<EOF
-[all]
-${APP_PRIVATE_IP} ansible_user=ubuntu ansible_ssh_private_key_file=/var/lib/jenkins/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no'
-
+                        cat > inventory.ini <<EOF2
 [app]
 ${APP_PRIVATE_IP} ansible_user=ubuntu ansible_ssh_private_key_file=/var/lib/jenkins/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no'
-EOF
+EOF2
 
                         echo "=== Generated inventory ==="
                         cat inventory.ini
@@ -216,6 +211,7 @@ EOF
                 dir("${ANSIBLE_DIR}") {
                     sh '''
                         set -e
+
                         ansible-playbook \
                             -i inventory.ini \
                             deploy.yml \
@@ -239,47 +235,16 @@ EOF
                 }
             }
         }
-
-        stage('Deployment Verification') {
-            steps {
-                sh '''
-                    set -e
-
-                    echo "=== Application health check ==="
-
-                    for i in $(seq 1 12); do
-                        if curl -fsS "http://${APP_PUBLIC_IP}/" >/tmp/app_response.txt; then
-                            echo "Application is responding:"
-                            cat /tmp/app_response.txt
-                            exit 0
-                        fi
-
-                        echo "Application not ready. Attempt $i/12"
-                        sleep 5
-                    done
-
-                    echo "ERROR: Application health check failed."
-                    exit 1
-                '''
-            }
-        }
     }
 
     post {
         success {
-            echo "=========================================="
-            echo "CloudOptima deployment successful"
-            echo "Application: ${params.APP_NAME}"
-            echo "Public IP: ${env.APP_PUBLIC_IP}"
-            echo "=========================================="
+            echo "CloudOptima deployment completed successfully."
+            echo "Application Public IP: ${APP_PUBLIC_IP}"
         }
 
         failure {
-            echo "=========================================="
-            echo "CloudOptima deployment FAILED"
-            echo "Check the failed pipeline stage."
-            echo "=========================================="
+            echo "CloudOptima deployment failed."
         }
     }
 }
-

@@ -38,25 +38,6 @@
         dest: "/opt/{{ app_name }}/"
         mode: "0644"
 
-    - name: Create application Dockerfile
-      ansible.builtin.copy:
-        dest: "/opt/{{ app_name }}/Dockerfile"
-        mode: "0644"
-        content: |
-          FROM python:3.11-slim
-
-          WORKDIR /app
-
-          COPY requirements.txt .
-
-          RUN pip install --no-cache-dir -r requirements.txt
-
-          COPY . .
-
-          EXPOSE 5000
-
-          CMD ["python", "app.py"]
-
     - name: Build application Docker image
       community.docker.docker_image:
         name: "{{ app_name }}:latest"
