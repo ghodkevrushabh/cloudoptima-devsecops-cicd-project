@@ -1,0 +1,143 @@
+import os
+
+def generate_iac(app_name, environment, port, instance_size, s3_bucket_name):
+    base_dir = os.path.expanduser('~/cloudoptima/generated')
+    tf_dir = os.path.join(base_dir, 'terraform')
+    ansible_dir = os.path.join(base_dir, 'ansible')
+
+    os.makedirs(tf_dir, exist_ok=True)
+    os.makedirs(ansible_dir, exist_ok=True)
+
+    # 1. Generate terraform.tfvars
+    tfvars_content = f"""app_name      = "{app_name}"
+environment   = "{environment}"
+app_port      = {port}
+instance_type = "{instance_size}"
+"""
+    with open(os.path.join(tf_dir, 'terraform.tfvars'), 'w') as f:
+        f.write(tfvars_content)
+
+    # 2. Generate main.tf (Terraform Infrastructure Blueprint)
+    main_tf_content = f"""terraform {{
+  required_version = ">= 1.5.0"
+  required_providers {{
+    aws = {{
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }}
+  }}
+  backend "s3" {{
+    bucket = "{s3_bucket_name}"
+    key    = "environments/{app_name}/terraform.tfstate"
+    region = "us-east-1"
+  }}
+}}
+
+provider "aws" {{
+  region = "us-east-1"
+}}
+
+variable "app_name" {{ type = string }}
+variable "environment" {{ type = string }}
+variable "app_port" {{ type = number }}
+variable "instance_type" {{ type = string }}
+
+data "aws_vpc" "existing" {{
+  filter {{
+    name   = "tag:Name"
+    values = ["cloudoptima-vpc"]
+  }}
+}}
+
+data "aws_subnet" "existing" {{
+  filter {{
+    name   = "tag:Name"
+    values = ["cloudoptima-subnet-public1*"]
+  }}
+}}
+
+resource "aws_security_group" "app_sg" {{
+  name        = "${{var.app_name}}-sg"
+  description = "Security group for ${{var.app_name}}"
+  vpc_id      = data.aws_vpc.existing.id
+
+  inbound_rule {{
+    from_port   = var.app_port
+    to_port     = var.app_port
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }}
+
+  inbound_rule {{
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }}
+
+  egress {{
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }}
+
+  tags = {{
+    Name        = "${{var.app_name}}-sg"
+    Environment = var.environment
+    ManagedBy   = "CloudOptima-IDP"
+  }}
+}}
+
+resource "aws_instance" "app_server" {{
+  ami                    = "ami-0c7217cdde317cfec" # Ubuntu 22.04 LTS
+  instance_type          = var.instance_type
+  subnet_id              = data.aws_subnet.existing.id
+  vpc_security_group_ids = [aws_security_group.app_sg.id]
+  key_name               = "cloudoptima-key"
+
+  tags = {{
+    Name        = var.app_name
+    Environment = var.environment
+    ManagedBy   = "CloudOptima-IDP"
+  }}
+}}
+
+output "app_public_ip" {{
+  value = aws_instance.app_server.public_ip
+}}
+"""
+    # Replace inbound_rule syntax with standard ingress block for standard TF syntax
+    main_tf_content = main_tf_content.replace("inbound_rule", "ingress")
+    
+    with open(os.path.join(tf_dir, 'main.tf'), 'w') as f:
+        f.write(main_tf_content)
+
+    # 3. Generate Ansible Playbook
+    playbook_content = f"""---
+- name: Deploy {app_name} Application
+  hosts: all
+  become: true
+  vars:
+    app_name: "{app_name}"
+    app_port: {port}
+  tasks:
+    - name: Ensure Docker is installed
+      apt:
+        name: docker.io
+        state: present
+        update_cache: yes
+
+    - name: Run Application Container
+      docker_container:
+        name: "{{{{ app_name }}}}"
+        image: "nginx:alpine"
+        state: started
+        restart_policy: always
+        published_ports:
+          - "{{{{ app_port }}}}:80"
+"""
+    with open(os.path.join(ansible_dir, 'deploy.yml'), 'w') as f:
+        f.write(playbook_content)
+
+    return True
