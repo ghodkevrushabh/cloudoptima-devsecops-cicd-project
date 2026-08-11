@@ -60,7 +60,9 @@ pipeline {
        
        stage('SecOps: Code Quality - SonarQube') {
            steps {
-               withSonarQubeEnv('SonarQube') {
+               script {
+                   def scannerHome = tool 'SonarQubeScanner'
+                   
                    withCredentials([
                        string(
                            credentialsId: 'sonarqube-token',
