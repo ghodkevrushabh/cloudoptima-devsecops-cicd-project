@@ -76,8 +76,8 @@ pipeline {
                             -Dsonar.projectKey=cloudoptima \
                             -Dsonar.projectName=CloudOptima \
                             -Dsonar.sources=application \
-                            -Dsonar.host.url="$SONAR_HOST_URL" \
-                            -Dsonar.token="$SONAR_TOKEN"
+                            -Dsonar.host.url="\$SONAR_HOST_URL" \
+                            -Dsonar.token="\$SONAR_TOKEN"
                       '''
                    }
                }
