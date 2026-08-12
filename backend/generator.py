@@ -1,32 +1,96 @@
 import os
 
-# Securely load from .env file
-env_path = os.path.expanduser('~/cloudoptima/config/.env')
+
+# ============================================================
+# Environment Configuration
+# ============================================================
+
+env_path = os.path.expanduser("~/cloudoptima/cloudoptima-devsecops-cicd-project/config/.env")
+
 env_vars = {}
+
 if os.path.exists(env_path):
     with open(env_path) as f:
         for line in f:
-            if line.strip() and not line.startswith('#'):
-                k, v = line.strip().split('=', 1)
-                env_vars[k] = v.strip('"\'')
+            line = line.strip()
+
+            if not line or line.startswith("#"):
+                continue
+
+            if "=" not in line:
+                continue
+
+            key, value = line.split("=", 1)
+            env_vars[key.strip()] = value.strip().strip('"').strip("'")
+
 
 AWS_REGION = env_vars.get("AWS_REGION")
 VPC_NAME = env_vars.get("VPC_NAME")
 SUBNET_ID = env_vars.get("SUBNET_ID")
 KEY_NAME = env_vars.get("KEY_NAME")
 TF_STATE_BUCKET = env_vars.get("TF_STATE_BUCKET")
-SSH_CIDR = env_vars.get("SSH_CIDR")
+SSH_CIDR = env_vars.get("SSH_CIDR", "10.0.0.0/16")
 
-def generate_iac(app_name, environment, port, instance_size, s3_bucket_name=None):
-    base_dir = os.path.expanduser("~/cloudoptima/generated")
-    tf_dir = os.path.join(base_dir, "terraform", app_name)
-    ansible_dir = os.path.join(base_dir, "ansible", app_name)
+# Security/monitoring configuration
+MONITORING_CIDR = env_vars.get(
+    "MONITORING_CIDR",
+    SSH_CIDR
+)
 
-    os.makedirs(tf_dir, exist_ok=True)
-    os.makedirs(ansible_dir, exist_ok=True)
-    state_bucket = s3_bucket_name or TF_STATE_BUCKET
+# IAM instance profile to attach to application EC2 instances.
+# This should be created once in AWS and supplied through .env.
+APP_INSTANCE_PROFILE = env_vars.get(
+    "APP_INSTANCE_PROFILE"
+)
 
+
+# ============================================================
+# IaC Generator
+# ============================================================
+
+def generate_iac(
+    app_name,
+    environment,
+    port,
+    instance_size,
+    s3_bucket_name=None
+):
+
+    base_dir = os.path.expanduser(
+        "~/cloudoptima/generated"
+    )
+
+    tf_dir = os.path.join(
+        base_dir,
+        "terraform",
+        app_name
+    )
+
+    ansible_dir = os.path.join(
+        base_dir,
+        "ansible",
+        app_name
+    )
+
+    os.makedirs(
+        tf_dir,
+        exist_ok=True
+    )
+
+    os.makedirs(
+        ansible_dir,
+        exist_ok=True
+    )
+
+    state_bucket = (
+        s3_bucket_name
+        or TF_STATE_BUCKET
+    )
+
+    # ========================================================
     # 1. terraform.tfvars
+    # ========================================================
+
     tfvars_content = f'''aws_region     = "{AWS_REGION}"
 app_name       = "{app_name}"
 environment    = "{environment}"
@@ -36,19 +100,30 @@ vpc_name       = "{VPC_NAME}"
 subnet_id      = "{SUBNET_ID}"
 key_name       = "{KEY_NAME}"
 ssh_cidr       = "{SSH_CIDR}"
+monitoring_cidr = "{MONITORING_CIDR}"
+instance_profile = "{APP_INSTANCE_PROFILE or ""}"
 '''
-    with open(os.path.join(tf_dir, "terraform.tfvars"), "w") as f:
+
+    with open(
+        os.path.join(tf_dir, "terraform.tfvars"),
+        "w"
+    ) as f:
         f.write(tfvars_content)
 
+    # ========================================================
     # 2. versions.tf
+    # ========================================================
+
     versions_tf = f'''terraform {{
   required_version = ">= 1.5.0"
+
   required_providers {{
     aws = {{
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }}
   }}
+
   backend "s3" {{
     bucket = "{state_bucket}"
     key    = "environments/{app_name}/terraform.tfstate"
@@ -60,24 +135,87 @@ provider "aws" {{
   region = var.aws_region
 }}
 '''
-    with open(os.path.join(tf_dir, "versions.tf"), "w") as f:
+
+    with open(
+        os.path.join(tf_dir, "versions.tf"),
+        "w"
+    ) as f:
         f.write(versions_tf)
 
+    # ========================================================
     # 3. variables.tf
-    variables_tf = '''variable "aws_region" { type = string }
-variable "app_name" { type = string }
-variable "environment" { type = string }
-variable "app_port" { type = number }
-variable "instance_type" { type = string }
-variable "vpc_name" { type = string }
-variable "subnet_id" { type = string }
-variable "key_name" { type = string }
-variable "ssh_cidr" { type = string }
+    # ========================================================
+
+    variables_tf = '''variable "aws_region" {
+  type = string
+}
+
+variable "app_name" {
+  type = string
+}
+
+variable "environment" {
+  type = string
+}
+
+variable "app_port" {
+  type = number
+
+  validation {
+    condition     = var.app_port >= 1 && var.app_port <= 65535
+    error_message = "Application port must be between 1 and 65535."
+  }
+}
+
+variable "instance_type" {
+  type = string
+
+  validation {
+    condition = contains(
+      ["t3.micro", "t3.small"],
+      var.instance_type
+    )
+
+    error_message = "Unsupported instance type."
+  }
+}
+
+variable "vpc_name" {
+  type = string
+}
+
+variable "subnet_id" {
+  type = string
+}
+
+variable "key_name" {
+  type = string
+}
+
+variable "ssh_cidr" {
+  type = string
+}
+
+variable "monitoring_cidr" {
+  type = string
+}
+
+variable "instance_profile" {
+  type    = string
+  default = ""
+}
 '''
-    with open(os.path.join(tf_dir, "variables.tf"), "w") as f:
+
+    with open(
+        os.path.join(tf_dir, "variables.tf"),
+        "w"
+    ) as f:
         f.write(variables_tf)
 
+    # ========================================================
     # 4. main.tf
+    # ========================================================
+
     main_tf = '''data "aws_vpc" "cloudoptima" {
   filter {
     name   = "tag:Name"
@@ -93,26 +231,49 @@ data "aws_ssm_parameter" "ubuntu_ami" {
   name = "/aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id"
 }
 
+
+# ============================================================
+# Application Security Group
+# ============================================================
+
 resource "aws_security_group" "app_sg" {
   name        = "${var.app_name}-sg"
   description = "Security group for ${var.app_name}"
   vpc_id      = data.aws_vpc.cloudoptima.id
 
+  # ----------------------------------------------------------
+  # Application traffic
+  #
+  # IMPORTANT:
+  # This currently uses the configured SSH/network CIDR rather
+  # than exposing the application to the entire internet.
+  # ----------------------------------------------------------
+
   ingress {
-    description = "Application traffic"
+    description = "Application traffic from CloudOptima network"
     from_port   = var.app_port
     to_port     = var.app_port
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.ssh_cidr]
   }
 
+  # ----------------------------------------------------------
+  # Node Exporter
+  #
+  # NEVER expose port 9100 publicly.
+  # ----------------------------------------------------------
+
   ingress {
-    description = "Metrics node exporter"
+    description = "Prometheus Node Exporter from monitoring network"
     from_port   = 9100
     to_port     = 9100
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.monitoring_cidr]
   }
+
+  # ----------------------------------------------------------
+  # SSH
+  # ----------------------------------------------------------
 
   ingress {
     description = "SSH from CloudOptima network"
@@ -121,6 +282,10 @@ resource "aws_security_group" "app_sg" {
     protocol    = "tcp"
     cidr_blocks = [var.ssh_cidr]
   }
+
+  # ----------------------------------------------------------
+  # Outbound traffic
+  # ----------------------------------------------------------
 
   egress {
     from_port   = 0
@@ -136,13 +301,76 @@ resource "aws_security_group" "app_sg" {
   }
 }
 
+
+# ============================================================
+# Application EC2
+# ============================================================
+
 resource "aws_instance" "app_server" {
-  ami                         = data.aws_ssm_parameter.ubuntu_ami.value
-  instance_type               = var.instance_type
-  subnet_id                   = data.aws_subnet.application.id
-  vpc_security_group_ids      = [aws_security_group.app_sg.id]
-  key_name                    = var.key_name
-  associate_public_ip_address = true
+
+  ami           = data.aws_ssm_parameter.ubuntu_ami.value
+  instance_type = var.instance_type
+
+  subnet_id = data.aws_subnet.application.id
+
+  vpc_security_group_ids = [
+    aws_security_group.app_sg.id
+  ]
+
+  key_name = var.key_name
+
+  # ----------------------------------------------------------
+  # Security
+  # ----------------------------------------------------------
+
+  # Do not automatically expose generated application servers
+  # with a public IPv4 address.
+  associate_public_ip_address = false
+
+  # ----------------------------------------------------------
+  # IAM
+  #
+  # Only attach an instance profile when one is configured.
+  # ----------------------------------------------------------
+
+  iam_instance_profile = (
+    var.instance_profile != ""
+    ? var.instance_profile
+    : null
+  )
+
+  # ----------------------------------------------------------
+  # IMDSv2
+  # ----------------------------------------------------------
+
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = 1
+    instance_metadata_tags      = "disabled"
+  }
+
+  # ----------------------------------------------------------
+  # Root EBS volume
+  #
+  # Encrypted + gp3 instead of unencrypted gp2.
+  # ----------------------------------------------------------
+
+  root_block_device {
+    encrypted   = true
+    volume_type = "gp3"
+    volume_size = 8
+
+    tags = {
+      Name        = "${var.app_name}-root"
+      Environment = var.environment
+      ManagedBy   = "CloudOptima-IDP"
+    }
+  }
+
+  # ----------------------------------------------------------
+  # Tags
+  # ----------------------------------------------------------
 
   tags = {
     Name        = var.app_name
@@ -151,32 +379,62 @@ resource "aws_instance" "app_server" {
   }
 }
 
-output "app_instance_id" { value = aws_instance.app_server.id }
-output "app_public_ip" { value = aws_instance.app_server.public_ip }
-output "app_private_ip" { value = aws_instance.app_server.private_ip }
+
+# ============================================================
+# Outputs
+# ============================================================
+
+output "app_instance_id" {
+  value = aws_instance.app_server.id
+}
+
+output "app_public_ip" {
+  value = aws_instance.app_server.public_ip
+}
+
+output "app_private_ip" {
+  value = aws_instance.app_server.private_ip
+}
 '''
-    with open(os.path.join(tf_dir, "main.tf"), "w") as f:
+
+    with open(
+        os.path.join(tf_dir, "main.tf"),
+        "w"
+    ) as f:
         f.write(main_tf)
 
-    # 5. Ansible inventory
+    # ========================================================
+    # 5. Ansible Inventory
+    # ========================================================
+
     inventory_content = '''[all]
 APP_IP_PLACEHOLDER ansible_user=ubuntu
 
 [all:vars]
 ansible_python_interpreter=/usr/bin/python3
 '''
-    with open(os.path.join(ansible_dir, "inventory.ini"), "w") as f:
+
+    with open(
+        os.path.join(ansible_dir, "inventory.ini"),
+        "w"
+    ) as f:
         f.write(inventory_content)
 
-    # 6. Ansible deployment playbook
+    # ========================================================
+    # 6. Ansible Deployment Playbook
+    # ========================================================
+
     playbook_content = f'''---
 - name: Deploy {app_name} Application
   hosts: all
   become: true
+
   vars:
     app_name: "{app_name}"
     app_port: {port}
+
   tasks:
+
     - name: Update apt cache
       ansible.builtin.apt:
         update_cache: true
@@ -215,8 +473,16 @@ ansible_python_interpreter=/usr/bin/python3
         published_ports:
           - "9100:9100"
 '''
-    with open(os.path.join(ansible_dir, "deploy.yml"), "w") as f:
+
+    with open(
+        os.path.join(ansible_dir, "deploy.yml"),
+        "w"
+    ) as f:
         f.write(playbook_content)
+
+    # ========================================================
+    # Return generated paths
+    # ========================================================
 
     return {
         "terraform_dir": tf_dir,
