@@ -132,15 +132,24 @@ pipeline {
                 '''
             }
         }
-
-        stage('SecOps: IaC Scan - Trivy') {
+        stage('SecOps: Container Image Scan - Trivy') {
             steps {
                 sh '''
                     set -e
-                    trivy config "${TF_DIR}"
+
+                    echo "=== Trivy Container Image Scan ==="
+                    echo "Scanning: ${ECR_IMAGE}"
+
+                    trivy image \
+                        --severity HIGH,CRITICAL \
+                        --exit-code 1 \
+                        "${ECR_IMAGE}"
+
+                    echo "Container image scan passed."
                 '''
             }
         }
+        
 
         stage('FinOps: Infracost') {
             steps {
