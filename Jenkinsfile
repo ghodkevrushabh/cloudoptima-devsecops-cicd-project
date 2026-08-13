@@ -166,6 +166,33 @@ pipeline {
             }
         }
 
+        stage('Container: Build Image') {
+            steps {
+                script {
+                    env.IMAGE_TAG = sh(
+                        script: 'git -C application rev-parse --short HEAD',
+                        returnStdout: true
+                    ).trim()
+
+                    env.ECR_IMAGE = "${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+                }
+
+                sh '''
+                    set -e
+
+                    echo "=== Docker Build ==="
+                    echo "Image tag: ${IMAGE_TAG}"
+                    echo "ECR image: ${ECR_IMAGE}"
+
+                    docker build \
+                    -t "${ECR_IMAGE}" \
+                    application
+
+                    echo "Docker image built successfully."
+                '''
+            }
+        }
+
         stage('Terraform: Init') {
             steps {
                 dir("${TF_DIR}") {
