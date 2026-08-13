@@ -359,7 +359,7 @@ EOF2
                         ansible-playbook \
                             -i inventory.ini \
                             deploy.yml \
-                            -e "app_source=${WORKSPACE}/application"
+                            -e "image_tag=${IMAGE_TAG}"
                     '''
                 }
             }
