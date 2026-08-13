@@ -132,24 +132,6 @@ pipeline {
                 '''
             }
         }
-        stage('SecOps: Container Image Scan - Trivy') {
-            steps {
-                sh '''
-                    set -e
-
-                    echo "=== Trivy Container Image Scan ==="
-                    echo "Scanning: ${ECR_IMAGE}"
-
-                    trivy image \
-                        --severity HIGH,CRITICAL \
-                        --exit-code 1 \
-                        "${ECR_IMAGE}"
-
-                    echo "Container image scan passed."
-                '''
-            }
-        }
-        
 
         stage('FinOps: Infracost') {
             steps {
@@ -198,6 +180,48 @@ pipeline {
                     application
 
                     echo "Docker image built successfully."
+                '''
+            }
+        }
+
+        stage('SecOps: Container Image Scan - Trivy') {
+            steps {
+                sh '''
+                    set -e
+
+                    echo "=== Trivy Container Image Scan ==="
+                    echo "Scanning: ${ECR_IMAGE}"
+
+                    trivy image \
+                        --severity HIGH,CRITICAL \
+                        --exit-code 1 \
+                        "${ECR_IMAGE}"
+
+                    echo "Container image scan passed."
+                '''
+            }
+        }
+
+        stage('Container: Push to ECR') {
+            steps {
+                sh '''
+                    set -e
+
+                    echo "=== ECR Login ==="
+
+                    aws ecr get-login-password \
+                        --region "${ECR_REGION}" | \
+                    docker login \
+                        --username AWS \
+                        --password-stdin \
+                        "${ECR_REGISTRY}"
+
+                    echo "=== Push Image ==="
+
+                    docker push "${ECR_IMAGE}"
+
+                    echo "Image successfully pushed to ECR:"
+                    echo "${ECR_IMAGE}"
                 '''
             }
         }
