@@ -190,12 +190,14 @@ pipeline {
                     set -e
 
                     echo "=== Trivy Container Image Scan ==="
-                    echo "Scanning: ${ECR_IMAGE}"
+                    
 
                     trivy image \
+                        --config trivy.yaml \
                         --severity HIGH,CRITICAL \
                         --exit-code 1 \
-                        "${ECR_IMAGE}"
+                        --format table \
+                        cloudoptima/demo-payment-api-2:${APP_IMAGE_TAG}
 
                     echo "Container image scan passed."
                 '''
