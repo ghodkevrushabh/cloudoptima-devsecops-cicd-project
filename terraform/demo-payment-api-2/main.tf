@@ -1,3 +1,7 @@
+data "aws_region" "current" {}
+
+data "aws_caller_identity" "current" {}
+
 data "aws_vpc" "cloudoptima" {
   filter {
     name   = "tag:Name"
@@ -56,6 +60,67 @@ resource "aws_security_group" "app_sg" {
   }
 }
 
+resource "aws_iam_role" "app_ec2_ecr_role" {
+  name = "${var.app_name}-ecr-pull-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [{
+      Effect = "Allow"
+
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      }
+
+      Action = "sts:AssumeRole"
+    }]
+  })
+
+  tags = {
+    Name        = "${var.app_name}-ecr-pull-role"
+    Environment = var.environment
+    ManagedBy   = "CloudOptima-IDP"
+  }
+}
+
+resource "aws_iam_role_policy" "app_ec2_ecr_pull" {
+  name = "${var.app_name}-ecr-pull"
+  role = aws_iam_role.app_ec2_ecr_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Effect = "Allow"
+
+        Action = [
+          "ecr:GetAuthorizationToken"
+        ]
+
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+
+        Action = [
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:BatchGetImage",
+          "ecr:GetDownloadUrlForLayer"
+        ]
+
+        Resource = "arn:aws:ecr:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:repository/cloudoptima/${var.app_name}"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_instance_profile" "app_ec2_profile" {
+  name = "${var.app_name}-instance-profile"
+  role = aws_iam_role.app_ec2_ecr_role.name
+}
+
 resource "aws_instance" "app_server" {
   ami                         = data.aws_ssm_parameter.ubuntu_ami.value
   instance_type               = var.instance_type
@@ -63,6 +128,8 @@ resource "aws_instance" "app_server" {
   vpc_security_group_ids      = [aws_security_group.app_sg.id]
   key_name                    = var.key_name
   associate_public_ip_address = true
+
+  iam_instance_profile = aws_iam_instance_profile.app_ec2_profile.name
 
   metadata_options {
     http_endpoint                 = "enabled"
