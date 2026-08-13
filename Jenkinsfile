@@ -18,6 +18,9 @@ pipeline {
     environment {
         TF_DIR = "terraform/${params.APP_NAME}"
         ANSIBLE_DIR = "ansible/${params.APP_NAME}"
+        ECR_REGION = "eu-north-1"
+        ECR_REGISTRY = "411902101270.dkr.ecr.eu-north-1.amazonaws.com"
+        ECR_REPOSITORY = "cloudoptima/demo-payment-api-2"
     }
 
     stages {
