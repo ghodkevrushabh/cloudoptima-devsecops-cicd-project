@@ -81,7 +81,6 @@ subnet_id      = "{SUBNET_ID}"
 key_name       = "{KEY_NAME}"
 ssh_cidr       = "{SSH_CIDR}"
 monitoring_cidr = "{MONITORING_CIDR}"
-instance_profile = "{APP_INSTANCE_PROFILE or ""}"
 '''
 
     with open(
@@ -180,10 +179,6 @@ variable "monitoring_cidr" {
   type = string
 }
 
-variable "instance_profile" {
-  type    = string
-  default = ""
-}
 '''
 
     with open(
@@ -281,6 +276,100 @@ resource "aws_security_group" "app_sg" {
   }
 }
 
+# ============================================================
+# Application ECR Repository
+# ============================================================
+
+resource "aws_ecr_repository" "app" {
+  name                 = "cloudoptima/${var.app_name}"
+  image_tag_mutability = "IMMUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  encryption_configuration {
+    encryption_type = "AES256"
+  }
+
+  tags = {
+    Name        = "cloudoptima/${var.app_name}"
+    Environment = var.environment
+    ManagedBy   = "CloudOptima-IDP"
+  }
+}
+
+
+# ============================================================
+# Application ECR IAM Role
+# ============================================================
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_iam_role" "app_ec2_ecr_role" {
+  name = "${var.app_name}-ecr-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Effect = "Allow"
+
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = {
+    Name        = "${var.app_name}-ecr-role"
+    Environment = var.environment
+    ManagedBy   = "CloudOptima-IDP"
+  }
+}
+
+resource "aws_iam_role_policy" "app_ec2_ecr_pull" {
+  name = "${var.app_name}-ecr-pull"
+
+  role = aws_iam_role.app_ec2_ecr_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Effect = "Allow"
+
+        Action = [
+          "ecr:GetAuthorizationToken"
+        ]
+
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+
+        Action = [
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:BatchGetImage",
+          "ecr:GetDownloadUrlForLayer"
+        ]
+
+        Resource = "arn:aws:ecr:${var.aws_region}:${data.aws_caller_identity.current.account_id}:repository/cloudoptima/${var.app_name}"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_instance_profile" "app_ec2_profile" {
+  name = "${var.app_name}-ecr-profile"
+  role = aws_iam_role.app_ec2_ecr_role.name
+}
+
 
 # ============================================================
 # Application EC2
@@ -313,11 +402,7 @@ resource "aws_instance" "app_server" {
   # Only attach an instance profile when one is configured.
   # ----------------------------------------------------------
 
-  iam_instance_profile = (
-    var.instance_profile != ""
-    ? var.instance_profile
-    : null
-  )
+  iam_instance_profile = aws_iam_instance_profile.app_ec2_profile.name
 
   # ----------------------------------------------------------
   # IMDSv2
@@ -412,7 +497,7 @@ ansible_python_interpreter=/usr/bin/python3
   vars:
     app_name: "{app_name}"
     app_port: {port}
-    container_port: 8080
+    container_port: 5000
 
     aws_region: "{AWS_REGION}"
     ecr_registry: "411902101270.dkr.ecr.{AWS_REGION}.amazonaws.com"
