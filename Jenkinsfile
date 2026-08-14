@@ -13,6 +13,18 @@ pipeline {
             defaultValue: 'https://github.com/ghodkevrushabh/demo-payment-api.git',
             description: 'Application source repository'
         )
+
+        string(
+            name: 'ARTIFACT_BUCKET',
+            defaultValue: 'cloudoptima-idp-artifacts-411902101270',
+            description: 'S3 bucket containing generated IaC artifacts'
+        )
+
+        string(
+            name: 'ARTIFACT_KEY',
+            defaultValue: '',
+            description: 'S3 object key of the generated IaC ZIP'
+        )
     }
 
     environment {
@@ -30,6 +42,65 @@ pipeline {
                 checkout scm
             }
         }
+
+        stage('Download Generated IaC Artifact') {
+            steps {
+                sh '''
+                    set -e
+
+                    echo "=== Generated IaC Artifact ==="
+
+                    if [ -z "${ARTIFACT_KEY}" ]; then
+                        echo "ERROR: ARTIFACT_KEY was not provided."
+                        exit 1
+                    fi
+
+                    if [ -z "${ARTIFACT_BUCKET}" ]; then
+                        echo "ERROR: ARTIFACT_BUCKET was not provided."
+                        exit 1
+                    fi
+
+                    echo "=== Downloading generated IaC ==="
+
+                    echo "Bucket: ${ARTIFACT_BUCKET}"
+                    echo "Key: ${ARTIFACT_KEY}"
+
+                    rm -rf artifact-package
+                    mkdir -p artifact-package
+
+                    aws s3 cp \
+                        "s3://${ARTIFACT_BUCKET}/${ARTIFACT_KEY}" \
+                        artifact-package/iac.zip
+
+                    echo "=== Artifact contents ==="
+                    unzip -l artifact-package/iac.zip
+
+                    rm -rf terraform/${APP_NAME}
+                    rm -rf ansible/${APP_NAME}
+
+                    unzip -q \
+                        artifact-package/iac.zip \
+                        -d .
+
+                    echo
+                    echo "=== Extracted Terraform ==="
+                    find "terraform/${APP_NAME}" -maxdepth 1 -type f | sort
+
+                    echo
+                    echo "=== Extracted Ansible ==="
+                    find "ansible/${APP_NAME}" -maxdepth 1 -type f | sort
+
+                    test -f "terraform/${APP_NAME}/main.tf"
+                    test -f "terraform/${APP_NAME}/variables.tf"
+                    test -f "terraform/${APP_NAME}/versions.tf"
+
+                    test -f "ansible/${APP_NAME}/deploy.yml"
+
+                    echo
+                    echo "Generated IaC artifact extracted successfully."
+                '''
+            }
+        } 
 
         stage('Checkout Application Source') {
             steps {
