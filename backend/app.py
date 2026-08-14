@@ -14,7 +14,6 @@ from flask import (
 from flask_sqlalchemy import SQLAlchemy
 
 from generator import generate_iac
-from git_sync import push_to_github
 
 app = Flask(__name__)
 
@@ -189,14 +188,9 @@ def create_request():
             s3_bucket_name=S3_STATE_BUCKET
         )
 
-        # Push generated IaC to GitHub
+    # Git operations are handled by Jenkins
         github_success = push_to_github(app_name)
 
-        if not github_success:
-            new_request.status = "GitPushFailed"
-            db.session.commit()
-
-            return "IaC generated, but GitHub push failed", 500
 
         new_request.status = "Generated"
         db.session.commit()

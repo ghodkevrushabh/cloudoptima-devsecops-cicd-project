@@ -30,3 +30,6 @@ venv/
 # Jenkins / temporary files
 *.tmp
 *.log
+
+# CloudOptima generated IaC
+/generated/

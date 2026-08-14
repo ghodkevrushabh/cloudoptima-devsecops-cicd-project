@@ -6,44 +6,22 @@ import os
 # ============================================================
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-env_path = os.path.join(BASE_DIR, "config", ".env")
 
-env_vars = {}
+AWS_REGION = os.getenv("AWS_REGION")
+VPC_NAME = os.getenv("VPC_NAME")
+SUBNET_ID = os.getenv("SUBNET_ID")
+KEY_NAME = os.getenv("KEY_NAME")
+TF_STATE_BUCKET = os.getenv("TF_STATE_BUCKET")
+SSH_CIDR = os.getenv("SSH_CIDR", "10.0.0.0/16")
 
-if os.path.exists(env_path):
-    with open(env_path) as f:
-        for line in f:
-            line = line.strip()
-
-            if not line or line.startswith("#"):
-                continue
-
-            if "=" not in line:
-                continue
-
-            key, value = line.split("=", 1)
-            env_vars[key.strip()] = value.strip().strip('"').strip("'")
-
-
-AWS_REGION = env_vars.get("AWS_REGION")
-VPC_NAME = env_vars.get("VPC_NAME")
-SUBNET_ID = env_vars.get("SUBNET_ID")
-KEY_NAME = env_vars.get("KEY_NAME")
-TF_STATE_BUCKET = env_vars.get("TF_STATE_BUCKET")
-SSH_CIDR = env_vars.get("SSH_CIDR", "10.0.0.0/16")
-
-# Security/monitoring configuration
-MONITORING_CIDR = env_vars.get(
+MONITORING_CIDR = os.getenv(
     "MONITORING_CIDR",
     SSH_CIDR
 )
 
-# IAM instance profile to attach to application EC2 instances.
-# This should be created once in AWS and supplied through .env.
-APP_INSTANCE_PROFILE = env_vars.get(
+APP_INSTANCE_PROFILE = os.getenv(
     "APP_INSTANCE_PROFILE"
 )
-
 
 # ============================================================
 # IaC Generator
@@ -57,8 +35,9 @@ def generate_iac(
     s3_bucket_name=None
 ):
 
-    base_dir = os.path.expanduser(
-        "~/cloudoptima/generated"
+    base_dir = os.getenv(
+    "GENERATED_BASE_DIR",
+    os.path.join(BASE_DIR, "generated")
     )
 
     tf_dir = os.path.join(
@@ -433,6 +412,14 @@ ansible_python_interpreter=/usr/bin/python3
   vars:
     app_name: "{app_name}"
     app_port: {port}
+    container_port: 8080
+
+    aws_region: "{AWS_REGION}"
+    ecr_registry: "411902101270.dkr.ecr.{AWS_REGION}.amazonaws.com"
+    ecr_repository: "cloudoptima/{app_name}"
+
+    # Jenkins will provide this during deployment.
+    image_tag: "latest"
 
   tasks:
 
@@ -440,9 +427,11 @@ ansible_python_interpreter=/usr/bin/python3
       ansible.builtin.apt:
         update_cache: true
 
-    - name: Install Docker
+    - name: Install required packages
       ansible.builtin.apt:
-        name: docker.io
+        name:
+          - docker.io
+          - awscli
         state: present
 
     - name: Ensure Docker service is running
@@ -451,19 +440,35 @@ ansible_python_interpreter=/usr/bin/python3
         state: started
         enabled: true
 
-    - name: Pull application image
+    - name: Authenticate Docker to Amazon ECR
+      ansible.builtin.shell: |
+        aws ecr get-login-password --region {{{{ aws_region }}}} |
+        docker login \
+          --username AWS \
+          --password-stdin \
+          {{{{ ecr_registry }}}}
+      args:
+        executable: /bin/bash
+      no_log: true
+
+    - name: Pull application image from ECR
       community.docker.docker_image:
-        name: nginx:alpine
+        name: "{{{{ ecr_registry }}}}/{{{{ ecr_repository }}}}:{{{{ image_tag }}}}"
         source: pull
+
+    - name: Stop old application container
+      community.docker.docker_container:
+        name: "{{{{ app_name }}}}"
+        state: absent
 
     - name: Run application container
       community.docker.docker_container:
         name: "{{{{ app_name }}}}"
-        image: nginx:alpine
+        image: "{{{{ ecr_registry }}}}/{{{{ ecr_repository }}}}:{{{{ image_tag }}}}"
         state: started
         restart_policy: always
         published_ports:
-          - "{{{{ app_port }}}}:80"
+          - "{{{{ app_port }}}}:{{{{ container_port }}}}"
 
     - name: Run Prometheus Node Exporter Container
       community.docker.docker_container:

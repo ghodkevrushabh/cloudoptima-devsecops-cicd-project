@@ -17,6 +17,8 @@ services:
     container_name: cloudoptima-flask
     env_file:
       - ./config/.env
+    environment:
+      GENERATED_BASE_DIR: /app/generated
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:
