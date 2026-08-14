@@ -5,7 +5,8 @@ import os
 # Environment Configuration
 # ============================================================
 
-env_path = os.path.expanduser("~/cloudoptima/cloudoptima-devsecops-cicd-project/config/.env")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+env_path = os.path.join(BASE_DIR, "config", ".env")
 
 env_vars = {}
 

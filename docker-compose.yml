@@ -5,10 +5,25 @@ services:
     env_file:
       - ./config/.env
     ports:
-      # Binding strictly to 127.0.0.1 for security
       - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  flask:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cloudoptima-flask
+    env_file:
+      - ./config/.env
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_started
+    volumes:
+      - ./generated:/app/generated
     restart: unless-stopped
 
 volumes:
