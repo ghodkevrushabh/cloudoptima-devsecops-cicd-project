@@ -227,77 +227,6 @@ pipeline {
             }
         }
 
-        stage('Container: Build Image') {
-            steps {
-                script {
-                    env.IMAGE_TAG = sh(
-                        script: 'git -C application rev-parse --short HEAD',
-                        returnStdout: true
-                    ).trim()
-                  
-                    env.ECR_IMAGE = "${ECR_REGISTRY}/cloudoptima/${params.APP_NAME}:${IMAGE_TAG}"
-                }
-
-                sh '''
-                    set -e
-
-                    echo "=== Docker Build ==="
-                    echo "Image tag: ${IMAGE_TAG}"
-                    echo "ECR image: ${ECR_IMAGE}"
-
-                    docker build \
-                    -t "${ECR_IMAGE}" \
-                    application
-
-                    echo "Docker image built successfully."
-                '''
-            }
-        }
-
-        stage('SecOps: Container Image Scan - Trivy') {
-            steps {
-                sh '''
-                    set -e
-
-                    echo "=== Trivy Container Image Scan ==="
-                    
-
-                    trivy image \
-                        --config trivy.yaml \
-                        --severity HIGH,CRITICAL \
-                        --exit-code 0 \
-                        --format table \
-                        "${ECR_IMAGE}"
-
-                    echo "Container image scan passed."
-                '''
-            }
-        }
-
-        stage('Container: Push to ECR') {
-            steps {
-                sh '''
-                    set -e
-
-                    echo "=== ECR Login ==="
-
-                    aws ecr get-login-password \
-                        --region "${ECR_REGION}" | \
-                    docker login \
-                        --username AWS \
-                        --password-stdin \
-                        "${ECR_REGISTRY}"
-
-                    echo "=== Push Image ==="
-
-                    docker push "${ECR_IMAGE}"
-
-                    echo "Image successfully pushed to ECR:"
-                    echo "${ECR_IMAGE}"
-                '''
-            }
-        }
-
         stage('Terraform: Init') {
             steps {
                 dir("${TF_DIR}") {
@@ -339,6 +268,77 @@ pipeline {
                         terraform apply -auto-approve tfplan
                     '''
                 }
+            }
+        }
+
+        stage('Container: Build Image') {
+            steps {
+                script {
+                    env.IMAGE_TAG = sh(
+                        script: 'git -C application rev-parse --short HEAD',
+                        returnStdout: true
+                    ).trim()
+
+                    env.ECR_IMAGE = "${ECR_REGISTRY}/cloudoptima/${params.APP_NAME}:${IMAGE_TAG}"
+                }
+
+                sh '''
+                    set -e
+
+                    echo "=== Docker Build ==="
+                    echo "Image tag: ${IMAGE_TAG}"
+                    echo "ECR image: ${ECR_IMAGE}"
+
+                    docker build \
+                    -t "${ECR_IMAGE}" \
+                    application
+
+                    echo "Docker image built successfully."
+                '''
+            }
+        }
+
+        stage('SecOps: Container Image Scan - Trivy') {
+            steps {
+                sh '''
+                    set -e
+
+                    echo "=== Trivy Container Image Scan ==="
+
+
+                    trivy image \
+                        --config trivy.yaml \
+                        --severity HIGH,CRITICAL \
+                        --exit-code 0 \
+                        --format table \
+                        "${ECR_IMAGE}"
+
+                    echo "Container image scan passed."
+                '''
+            }
+        }
+
+        stage('Container: Push to ECR') {
+            steps {
+                sh '''
+                    set -e
+
+                    echo "=== ECR Login ==="
+
+                    aws ecr get-login-password \
+                        --region "${ECR_REGION}" | \
+                    docker login \
+                        --username AWS \
+                        --password-stdin \
+                        "${ECR_REGISTRY}"
+
+                    echo "=== Push Image ==="
+
+                    docker push "${ECR_IMAGE}"
+
+                    echo "Image successfully pushed to ECR:"
+                    echo "${ECR_IMAGE}"
+                '''
             }
         }
 
