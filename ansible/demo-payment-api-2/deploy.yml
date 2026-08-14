@@ -6,7 +6,7 @@
   vars:
     app_name: "demo-payment-api-2"
     app_port: 80
-    container_port: 5000
+    container_port: 8080
 
     aws_region: "eu-north-1"
     ecr_registry: "411902101270.dkr.ecr.eu-north-1.amazonaws.com"
