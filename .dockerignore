@@ -20,3 +20,8 @@ terraform/**/*.tfplan
 config/.env
 *.pem
 *.key
+
+.env
+.env.*
+config/
+generated/
