@@ -182,7 +182,8 @@ pipeline {
                             -Dsonar.sources=application \
                             -Dsonar.host.url=http://localhost:9000 \
                             -Dsonar.token="\$SONAR_TOKEN" \
-                            -Dsonar.scm.exclusions.disabled=true
+                            -Dsonar.scm.exclusions.disabled=true \
+                            -Dsonar.qualitygate.wait=true
                       """
                    }
                }
@@ -198,7 +199,8 @@ pipeline {
 
                    gitleaks detect \
                      --source . \
-                     --no-banner
+                     --no-banner \
+                     --exit-code 1
 
                    echo "GitLeaks scan passed."
                '''
