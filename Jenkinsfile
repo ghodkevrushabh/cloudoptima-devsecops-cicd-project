@@ -28,6 +28,7 @@ pipeline {
     }
 
     environment {
+        PLATFORM_TF_DIR = "terraform/platform"
         TF_DIR = "terraform/${params.APP_NAME}"
         ANSIBLE_DIR = "ansible/${params.APP_NAME}"
         ECR_REGION = "eu-north-1"
@@ -222,6 +223,25 @@ pipeline {
                         echo "Infracost token is available."
 
                         infracost scan "${TF_DIR}"
+                    '''
+                }
+            }
+        }
+
+        stage('Platform: Terraform') {
+            steps {
+                dir("${PLATFORM_TF_DIR}") {
+                    sh '''
+                        set -e
+
+                        echo "=== Platform Terraform Init ==="
+                        terraform init -reconfigure
+
+                        echo "=== Platform Terraform Validate ==="
+                        terraform validate
+
+                        echo "=== Platform Terraform Plan ==="
+                        terraform plan -out=platform.tfplan
                     '''
                 }
             }
