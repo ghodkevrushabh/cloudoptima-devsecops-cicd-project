@@ -312,8 +312,8 @@ pipeline {
                             script: 'terraform output -raw alb_security_group_id',
                             returnStdout: true
                         )
-                        env.PLATFORM_APPLICATION_SUBNET_ID = sh(
-                            script: 'terraform output -raw application_subnet_id',
+                        env.PLATFORM_APPLICATION_SUBNET_IDS = sh(
+                            script: 'terraform output -raw application_subnet_ids',
                             returnStdout: true
                         ).trim()
                     }
@@ -325,11 +325,11 @@ pipeline {
 
                         echo "Target Group ARN: ${PLATFORM_TARGET_GROUP_ARN}"
                         echo "ALB Security Group ID: ${PLATFORM_ALB_SECURITY_GROUP_ID}"
-                        echo "Application Subnet ID: ${PLATFORM_APPLICATION_SUBNET_ID}"
+                        echo "Application Subnet IDs: ${PLATFORM_APPLICATION_SUBNET_IDS}"
 
                         test -n "${PLATFORM_TARGET_GROUP_ARN}"
                         test -n "${PLATFORM_ALB_SECURITY_GROUP_ID}"
-                        test -n "${PLATFORM_APPLICATION_SUBNET_ID}"
+                        test -n "${PLATFORM_APPLICATION_SUBNET_IDS}"
 
                     '''
                  }
