@@ -209,11 +209,18 @@ pipeline {
             steps {
                 sh '''
                     set -e
-                    checkov -d "${TF_DIR}" --soft-fail
+
+                    echo "=== Checkov IaC Security Scan ==="
+
+                    checkov \
+                        -d "${TF_DIR}" \
+                        --framework terraform \
+                        --quiet
+
+                    echo "Checkov scan passed."
                 '''
             }
         }
-
         stage('FinOps: Infracost') {
             steps {
                 withCredentials([
