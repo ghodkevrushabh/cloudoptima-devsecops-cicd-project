@@ -293,7 +293,7 @@ pipeline {
 
         stage('Container: Build Image') {
             steps {
-                script 
+                script {
                     env.IMAGE_TAG = "${env.BUILD_NUMBER}-${sh(
                         script: 'git -C application rev-parse --short HEAD',
                         returnStdout: true
