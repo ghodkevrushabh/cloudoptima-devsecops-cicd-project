@@ -14,6 +14,6 @@ variable "public_subnet_b" {
   type = string
 }
 
-variable "application_subnet_id" {
-  type = string
+variable "application_subnet_ids" {
+  type = list(string)
 }

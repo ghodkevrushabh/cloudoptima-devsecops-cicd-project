@@ -96,6 +96,6 @@ output "target_group_arn" {
   value = aws_lb_target_group.app.arn
 }
 
-output "application_subnet_id" {
-  value = var.application_subnet_id
+output "application_subnet_ids" {
+  value = var.application_subnet_ids
 }
