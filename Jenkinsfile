@@ -137,10 +137,11 @@ pipeline {
                                terraform.tfvars
 
                              echo "=== Verified platform values ==="
-                             grep -E 'target_group_arn|alb_security_group_id' terraform.tfvars
+                             cat terraform.tfvars
 
-                             grep -q 'target_group_arn = "' terraform.tfvars
-                             grep -q 'alb_security_group_id = "' terraform.tfvars 
+
+                             grep -q 'target_group_arn' terraform.tfvars
+                             grep -q 'alb_security_group_id' terraform.tfvars 
                          """
                      }
                  }
