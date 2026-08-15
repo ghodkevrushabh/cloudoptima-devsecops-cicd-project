@@ -4,7 +4,7 @@ pipeline {
     parameters {
         string(
             name: 'APP_NAME',
-            defaultValue: 'demo-payment-api-2',
+            defaultValue: 'private-app-test-3',
             description: 'Application infrastructure directory name'
         )
 
@@ -427,7 +427,7 @@ pipeline {
                     trivy image \
                         --config trivy.yaml \
                         --severity HIGH,CRITICAL \
-                        --exit-code 0 \
+                        --exit-code 1 \
                         --format table \
                         "${ECR_IMAGE}"
 
