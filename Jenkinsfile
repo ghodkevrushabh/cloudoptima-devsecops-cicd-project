@@ -100,6 +100,29 @@ pipeline {
                     echo "Generated IaC artifact extracted successfully."
                 '''
             }
+        }
+
+        stage('Inject Platform Outputs') {
+            steps {
+                dir("${TF_DIR}") {
+                    sh '''
+                        set -e
+
+                        echo "=== Injecting Platform Outputs ==="
+
+                        sed -i \
+                            "s|^target_group_arn *=.*|target_group_arn = \\"${PLATFORM_TARGET_GROUP_ARN}\\"|" \
+                            terraform.tfvars
+
+                        sed -i \
+                            "s|^alb_security_group_id *=.*|alb_security_group_id = \\"${PLATFORM_ALB_SECURITY_GROUP_ID}\\"|" \
+                            terraform.tfvars
+
+                        echo "=== Verified platform values ==="
+                        grep -E '^(target_group_arn|alb_security_group_id)' terraform.tfvars
+                   '''
+                }
+            }
         } 
 
         stage('Checkout Application Source') {
