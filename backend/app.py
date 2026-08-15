@@ -3,6 +3,11 @@ from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config', '.env'))
 
+from artifact_store import (
+    create_iac_archive,
+    upload_iac_archive,
+)
+
 from flask import (
     Flask,
     render_template,
@@ -92,6 +97,16 @@ class EnvironmentRequest(db.Model):
         default="Pending"
     )
 
+    artifact_bucket = db.Column(
+        db.String(255),
+        nullable=True
+    )
+
+    artifact_key = db.Column(
+        db.String(1000),
+        nullable=True
+    )
+
 
 # ---------------------------------------------------------
 # Routes
@@ -175,10 +190,13 @@ def create_request():
     db.session.commit()
 
     # -----------------------------------------------------
-    # Generate IaC + Push to GitHub
+    # Generate IaC + Upload Artifact
     # -----------------------------------------------------
 
     try:
+
+        new_request.status = "Generating"
+        db.session.commit()
 
         generate_iac(
             app_name=app_name,
@@ -188,12 +206,43 @@ def create_request():
             s3_bucket_name=S3_STATE_BUCKET
         )
 
-    # Git operations are handled by Jenkins
-        github_success = push_to_github(app_name)
-
-
-        new_request.status = "Generated"
+        new_request.status = "Uploading"
         db.session.commit()
+
+        generated_base_dir = os.getenv(
+            "GENERATED_BASE_DIR",
+            os.path.join(
+                os.path.dirname(
+                    os.path.dirname(__file__)
+                ),
+                "generated"
+            )
+        )
+
+        archive_path = create_iac_archive(
+            app_name=app_name,
+            generated_base_dir=generated_base_dir
+        )
+
+        artifact_key = upload_iac_archive(
+            archive_path=archive_path,
+            app_name=app_name
+        )
+
+        new_request.artifact_bucket = os.getenv(
+            "ARTIFACT_BUCKET"
+        )
+
+        new_request.artifact_key = artifact_key
+        new_request.status = "Generated"
+
+        db.session.commit()
+
+        app.logger.info(
+            "IaC artifact created successfully: s3://%s/%s",
+            new_request.artifact_bucket,
+            new_request.artifact_key
+        )
 
     except Exception as error:
 
@@ -201,15 +250,13 @@ def create_request():
         db.session.commit()
 
         app.logger.exception(
-            "IaC generation or GitHub push failed: %s",
+            "IaC generation or artifact upload failed: %s",
             error
         )
 
         return "IaC generation failed", 500
 
     return redirect(url_for("index"))
-
-
 # ---------------------------------------------------------
 # Application startup
 # ---------------------------------------------------------
