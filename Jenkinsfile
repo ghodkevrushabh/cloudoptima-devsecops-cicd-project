@@ -294,11 +294,12 @@ pipeline {
         stage('Container: Build Image') {
             steps {
                 script {
-                    env.IMAGE_TAG = "${env.BUILD_NUMBER}-${sh(
+                    def gitSha = sh(
                         script: 'git -C application rev-parse --short HEAD',
                         returnStdout: true
                     ).trim()}"
-
+                
+                    env.IMAGE_TAG = "${env.BUILD_NUMBER}-${gitSha}"
                     env.ECR_IMAGE = "${ECR_REGISTRY}/cloudoptima/${params.APP_NAME}:${IMAGE_TAG}"
                 }
 
@@ -310,8 +311,8 @@ pipeline {
                     echo "ECR image: ${ECR_IMAGE}"
 
                     docker build \
-                    -t "${ECR_IMAGE}" \
-                    application
+                        -t "${ECR_IMAGE}" \
+                        application
 
                     echo "Docker image built successfully."
                 '''
