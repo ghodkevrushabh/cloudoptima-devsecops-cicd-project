@@ -242,6 +242,12 @@ pipeline {
 
                         echo "=== Platform Terraform Plan ==="
                         terraform plan -out=platform.tfplan
+
+                        echo "=== Platform Terraform Apply ==="
+                        terraform apply -auto-approve platform.tfplan
+
+                        echo "=== Platform Terraform Apply Complete ==="
+
                     '''
                 }
             }
