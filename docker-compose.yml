@@ -15,17 +15,30 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: cloudoptima-flask
+
     env_file:
       - ./config/.env
+
     environment:
       GENERATED_BASE_DIR: /app/generated
+      HOME: /home/cloudoptima
+      AWS_PROFILE: default
+      AWS_CONFIG_FILE: /home/cloudoptima/.aws/config
+      AWS_LOGIN_CACHE_DIRECTORY: /home/cloudoptima/.aws/login/cache
+      TARGET_GROUP_ARN: ${TARGET_GROUP_ARN}
+      ALB_SECURITY_GROUP_ID: ${ALB_SECURITY_GROUP_ID}
+
     ports:
       - "127.0.0.1:8080:8080"
+
     depends_on:
       postgres:
         condition: service_started
+
     volumes:
       - ./generated:/app/generated
+      - ${HOME}/.aws:/home/cloudoptima/.aws
+
     restart: unless-stopped
 
 volumes:

@@ -1,0 +1,4 @@
+aws_region      = "eu-north-1"
+vpc_id          = "vpc-0e7ac8cf8da2cfb44"
+public_subnet_a = "subnet-05a93b54d68e26b16"
+public_subnet_b = "subnet-050f0b51ef67ee489"

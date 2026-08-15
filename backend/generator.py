@@ -13,6 +13,8 @@ SUBNET_ID = os.getenv("SUBNET_ID")
 KEY_NAME = os.getenv("KEY_NAME")
 TF_STATE_BUCKET = os.getenv("TF_STATE_BUCKET")
 SSH_CIDR = os.getenv("SSH_CIDR", "10.0.0.0/16")
+TARGET_GROUP_ARN = os.getenv("TARGET_GROUP_ARN")
+ALB_SECURITY_GROUP_ID = os.getenv("ALB_SECURITY_GROUP_ID")
 
 MONITORING_CIDR = os.getenv(
     "MONITORING_CIDR",
@@ -81,6 +83,8 @@ subnet_id      = "{SUBNET_ID}"
 key_name       = "{KEY_NAME}"
 ssh_cidr       = "{SSH_CIDR}"
 monitoring_cidr = "{MONITORING_CIDR}"
+target_group_arn = "{TARGET_GROUP_ARN}"
+alb_security_group_id = "{ALB_SECURITY_GROUP_ID}"
 '''
 
     with open(
@@ -126,6 +130,10 @@ provider "aws" {{
     # ========================================================
 
     variables_tf = '''variable "aws_region" {
+  type = string
+}
+
+variable "alb_security_group_id" {
   type = string
 }
 
@@ -179,6 +187,9 @@ variable "monitoring_cidr" {
   type = string
 }
 
+variable "target_group_arn" {
+  type = string
+}
 '''
 
     with open(
@@ -225,11 +236,11 @@ resource "aws_security_group" "app_sg" {
   # ----------------------------------------------------------
 
   ingress {
-    description = "Application traffic from CloudOptima network"
+    description = "Application traffic from CloudOptima ALB"
     from_port   = var.app_port
     to_port     = var.app_port
     protocol    = "tcp"
-    cidr_blocks = [var.ssh_cidr]
+    security_groups = [var.alb_security_group_id]
   }
 
   # ----------------------------------------------------------
@@ -444,6 +455,11 @@ resource "aws_instance" "app_server" {
   }
 }
 
+resource "aws_lb_target_group_attachment" "app" {
+  target_group_arn = var.target_group_arn
+  target_id        = aws_instance.app_server.id
+  port             = var.app_port
+}
 
 # ============================================================
 # Outputs
