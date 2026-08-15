@@ -13,3 +13,7 @@ variable "public_subnet_a" {
 variable "public_subnet_b" {
   type = string
 }
+
+variable "application_subnet_id" {
+  type = string
+}

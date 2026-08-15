@@ -95,3 +95,7 @@ output "alb_security_group_id" {
 output "target_group_arn" {
   value = aws_lb_target_group.app.arn
 }
+
+output "application_subnet_id" {
+  value = var.application_subnet_id
+}
