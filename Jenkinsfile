@@ -25,6 +25,16 @@ pipeline {
             defaultValue: '',
             description: 'S3 object key of the generated IaC ZIP'
         )
+
+        choice(
+            name: 'APPLICATION_SUBNET_ID',
+            choices: [
+                'subnet-0ec0b380e5d2e69eb',
+                'subnet-0515995fc55b98aa0',
+                'subnet-0d5e8fa1aed973590'
+            ],
+            description: 'Private application subnet/AZ. 1c, 1a, 1b respectively.'
+        )
     }
 
     environment {
@@ -114,12 +124,18 @@ pipeline {
                          returnStdout: true
                      ).trim()
 
+                     def selectedSubnet = params.APPLICATION_SUBNET_ID
+
                      if (!targetGroupArn) {
                          error("Platform target_group_arn is empty.")
                      }
 
                      if (!albSecurityGroupId) {
                          error("Platform alb_security_group_id is empty.")
+                     }
+
+                     if (!selectedSubnet) {
+                         error("APPLICATION_SUBNET_ID was not selected.")
                      }
 
                      dir("${TF_DIR}") {
@@ -135,13 +151,18 @@ pipeline {
                              sed -i \
                                's|^alb_security_group_id *=.*|alb_security_group_id = "${albSecurityGroupId}"|' \
                                terraform.tfvars
+                             
+                             sed -i \
+                               's|^subnet_id *=.*|subnet_id = "${selectedSubnet}"|' \
+                               terraform.tfvars
 
                              echo "=== Verified platform values ==="
                              cat terraform.tfvars
 
 
                              grep -q 'target_group_arn' terraform.tfvars
-                             grep -q 'alb_security_group_id' terraform.tfvars 
+                             grep -q 'alb_security_group_id' terraform.tfvars
+                             grep -q 'subnet_id' terraform.tfvars 
                          """
                      }
                  }
