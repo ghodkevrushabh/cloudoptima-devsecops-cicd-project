@@ -166,12 +166,12 @@ pipeline {
                           echo "=== SonarQube Code Analysis ==="
                           echo "Scanner: ${scannerHome}/bin/sonar-scanner"
 
-                          "${scannerHome}/bin/sonar-scanner" \\
-                            -Dsonar.projectKey=cloudoptima \\
-                            -Dsonar.projectName=CloudOptima \\
-                            -Dsonar.sources=application \\
-                            -Dsonar.host.url=http://localhost:9000 \\
-                            -Dsonar.token="\$SONAR_TOKEN" \\
+                          "${scannerHome}/bin/sonar-scanner" \
+                            -Dsonar.projectKey=cloudoptima \
+                            -Dsonar.projectName=CloudOptima \
+                            -Dsonar.sources=application \
+                            -Dsonar.host.url=http://localhost:9000 \
+                            -Dsonar.token="\$SONAR_TOKEN" \
                             -Dsonar.scm.exclusions.disabled=true
                       """
                    }
@@ -187,8 +187,8 @@ pipeline {
                    echo "=== GitLeaks Secret Scan ==="
 
                    gitleaks detect \
-                   --source . \
-                   --no-banner
+                     --source . \
+                     --no-banner
 
                    echo "GitLeaks scan passed."
                '''
@@ -297,7 +297,7 @@ pipeline {
                     def gitSha = sh(
                         script: 'git -C application rev-parse --short HEAD',
                         returnStdout: true
-                    ).trim()}"
+                    ).trim()
                 
                     env.IMAGE_TAG = "${env.BUILD_NUMBER}-${gitSha}"
                     env.ECR_IMAGE = "${ECR_REGISTRY}/cloudoptima/${params.APP_NAME}:${IMAGE_TAG}"
