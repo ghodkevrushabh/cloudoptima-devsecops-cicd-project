@@ -313,7 +313,7 @@ pipeline {
                             returnStdout: true
                         )
                         env.PLATFORM_APPLICATION_SUBNET_IDS = sh(
-                            script: 'terraform output -raw application_subnet_ids',
+                            script: 'terraform output -json application_subnet_ids',
                             returnStdout: true
                         ).trim()
                     }
