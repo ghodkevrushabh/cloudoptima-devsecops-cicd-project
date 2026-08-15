@@ -101,29 +101,48 @@ pipeline {
                 '''
             }
         }
-
         stage('Inject Platform Outputs') {
             steps {
-                dir("${TF_DIR}") {
-                    sh '''
-                        set -e
+                 script {
+                     def targetGroupArn = sh(
+                         script: "cd ${PLATFORM_TF_DIR} && terraform output -raw target_group_arn",
+                         returnStdout: true
+                     ).trim()
 
-                        echo "=== Injecting Platform Outputs ==="
+                     def albSecurityGroupId = sh(
+                         script: "cd ${PLATFORM_TF_DIR} && terraform output -raw alb_security_group_id",
+                         returnStdout: true
+                     ).trim()
 
-                        sed -i \
-                            "s|^target_group_arn *=.*|target_group_arn = \\"${PLATFORM_TARGET_GROUP_ARN}\\"|" \
-                            terraform.tfvars
+                     if (!targetGroupArn) {
+                         error("Platform target_group_arn is empty.")
+                     }
 
-                        sed -i \
-                            "s|^alb_security_group_id *=.*|alb_security_group_id = \\"${PLATFORM_ALB_SECURITY_GROUP_ID}\\"|" \
-                            terraform.tfvars
+                     if (!albSecurityGroupId) {
+                         error("Platform alb_security_group_id is empty.")
+                     }
 
-                        echo "=== Verified platform values ==="
-                        grep -E '^(target_group_arn|alb_security_group_id)' terraform.tfvars
-                   '''
-                }
+                     dir("${TF_DIR}") {
+                         sh """
+                             set -e
+
+                             echo "=== Injecting Platform Outputs ==="
+
+                             sed -i \
+                               's|^target_group_arn *=.*|target_group_arn = "${targetGroupArn}"|' \
+                               terraform.tfvars
+
+                             sed -i \
+                               's|^alb_security_group_id *=.*|alb_security_group_id = "${albSecurityGroupId}"|' \
+                               terraform.tfvars
+
+                             echo "=== Verified platform values ==="
+                             grep -E '^(target_group_arn|alb_security_group_id)' terraform.tfvars
+                         """
+                     }
+                 }
             }
-        } 
+        }
 
         stage('Checkout Application Source') {
             steps {
