@@ -293,11 +293,11 @@ pipeline {
 
         stage('Container: Build Image') {
             steps {
-                script {
-                    env.IMAGE_TAG = sh(
+                script 
+                    env.IMAGE_TAG = "${env.BUILD_NUMBER}-${sh(
                         script: 'git -C application rev-parse --short HEAD',
                         returnStdout: true
-                    ).trim()
+                    ).trim()}"
 
                     env.ECR_IMAGE = "${ECR_REGISTRY}/cloudoptima/${params.APP_NAME}:${IMAGE_TAG}"
                 }
