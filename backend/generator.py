@@ -1,4 +1,13 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv(
+    os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "config",
+        ".env"
+    )
+)
 
 
 # ============================================================
@@ -513,7 +522,7 @@ ansible_python_interpreter=/usr/bin/python3
   vars:
     app_name: "{app_name}"
     app_port: {port}
-    container_port: 5000
+    container_port: 3000
 
     aws_region: "{AWS_REGION}"
     ecr_registry: "411902101270.dkr.ecr.{AWS_REGION}.amazonaws.com"
