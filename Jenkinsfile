@@ -264,38 +264,6 @@ pipeline {
                 '''
             }
         }
-
-        stage('SecOps: Policy Enforcement - OPA') {
-            steps {
-                dir("${TF_DIR}") {
-                    sh '''
-                        set -e
-
-                        echo "=== OPA Terraform Policy Check ==="
-
-                        test -f tfplan
-
-                        terraform show -json tfplan > tfplan.json
-
-                        opa eval \
-                            --format pretty \
-                            --data "${WORKSPACE}/policies/opa/terraform.rego" \
-                            --input tfplan.json \
-                            'data.cloudoptima.terraform.deny' \
-                            > opa-result.txt
-
-                        cat opa-result.txt
-
-                        if grep -q 'EC2 instance' opa-result.txt; then
-                            echo "OPA policy violations detected."
-                            exit 1
-                        fi
-
-                        echo "OPA policy check passed."
-                     '''
-                 }
-             }
-        }
         stage('Platform: Terraform') {
             steps {
                 dir("${PLATFORM_TF_DIR}") {
@@ -426,6 +394,37 @@ pipeline {
             }
         }
 
+        stage('SecOps: Policy Enforcement - OPA') {
+            steps {
+                dir("${TF_DIR}") {
+                    sh '''
+                        set -e
+
+                        echo "=== OPA Terraform Policy Check ==="
+
+                        test -f tfplan
+
+                        terraform show -json tfplan > tfplan.json
+
+                        opa eval \
+                            --format pretty \
+                            --data "${WORKSPACE}/policies/opa/terraform.rego" \
+                            --input tfplan.json \
+                            'data.cloudoptima.terraform.deny' \
+                            > opa-result.txt
+
+                        cat opa-result.txt
+
+                        if grep -q 'EC2 instance' opa-result.txt; then
+                            echo "OPA policy violations detected."
+                            exit 1
+                        fi
+
+                        echo "OPA policy check passed."
+                    '''
+                }
+            }
+        }
         stage('Terraform: Apply') {
             steps {
                 dir("${TF_DIR}") {
