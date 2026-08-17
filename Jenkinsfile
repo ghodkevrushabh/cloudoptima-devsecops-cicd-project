@@ -149,13 +149,15 @@ pipeline {
                 sh '''
                     set -e
 
-                    echo "=== Application files ==="
-                    ls -la application/
+                    echo "=== Application validation ==="
 
-                    echo "=== Python syntax check ==="
-                    python3 -m py_compile application/app.py
+                    test -f application/Dockerfile
+                    test -f application/package.json
 
-                    echo "Application validation passed."
+                    echo "Dockerfile found."
+                    echo "package.json found."
+                    echo "Application repository validation passed."
+   
                 '''
             }
        }    
