@@ -172,16 +172,16 @@ pipeline {
                     echo "Dockerfile found."
                     echo "package.json found."
                     echo "Application repository validation passed."
-   
+
                 '''
             }
-       }    
-       
+       }
+
        stage('SecOps: Code Quality - SonarQube') {
            steps {
                script {
                    def scannerHome = tool 'SonarQubeScanner'
-                   
+
                    withCredentials([
                        string(
                            credentialsId: 'sonarqube-token',
@@ -224,6 +224,30 @@ pipeline {
             }
         }
 
+        stage('FinOps: Infracost') {
+            steps {
+                withCredentials([
+                    string(
+                        credentialsId: 'infracost-api-key',
+                        variable: 'INFRACOST_CLI_AUTHENTICATION_TOKEN'
+                    )
+                ]) {
+                    sh '''
+                        set -e
+
+                        if [ -z "$INFRACOST_CLI_AUTHENTICATION_TOKEN" ]; then
+
+                            echo "ERROR: Infracost credential was not injected."
+                            exit 1
+                        fi
+
+                        echo "Infracost token is available."
+
+                        infracost scan "${TF_DIR}"
+                    '''
+                }
+            }
+        }
         stage('SecOps: IaC Scan - Checkov') {
             steps {
                 sh '''
@@ -240,30 +264,35 @@ pipeline {
                 '''
             }
         }
-        stage('FinOps: Infracost') {
+
+        stage('SecOps: Policy Enforcement - OPA') {
             steps {
-                withCredentials([
-                    string(
-                        credentialsId: 'infracost-api-key',
-                        variable: 'INFRACOST_CLI_AUTHENTICATION_TOKEN'
-                    )
-                ]) {
-                    sh '''
-                        set -e
+                sh '''
+                    set -e
 
-                        if [ -z "$INFRACOST_CLI_AUTHENTICATION_TOKEN" ]; then
-                            echo "ERROR: Infracost credential was not injected."
-                            exit 1
-                        fi
+                    echo "=== OPA Terraform Policy Check ==="
 
-                        echo "Infracost token is available."
+                    terraform show -json "${TF_DIR}/tfplan" \
+                        > "${TF_DIR}/tfplan.json"
 
-                        infracost scan "${TF_DIR}"
-                    '''
-                }
+                    opa eval \
+                        --format pretty \
+                        --data policies/opa/terraform.rego \
+                        --input "${TF_DIR}/tfplan.json" \
+                        'data.cloudoptima.terraform.deny' \
+                        > opa-result.txt
+
+                    cat opa-result.txt
+
+                    if grep -q 'EC2 instance' opa-result.txt; then
+                        echo "OPA policy violations detected."
+                        exit 1
+                    fi
+
+                    echo "OPA policy check passed."
+                '''
             }
         }
-
         stage('Platform: Terraform') {
             steps {
                 dir("${PLATFORM_TF_DIR}") {
@@ -412,7 +441,7 @@ pipeline {
                         script: 'git -C application rev-parse --short HEAD',
                         returnStdout: true
                     ).trim()
-                
+
                     env.IMAGE_TAG = "${env.BUILD_NUMBER}-${gitSha}"
                     env.ECR_IMAGE = "${ECR_REGISTRY}/cloudoptima/${params.APP_NAME}:${IMAGE_TAG}"
                 }
@@ -437,6 +466,7 @@ pipeline {
             steps {
                 sh '''
                     set +e
+
                     echo "=== Trivy Container Image Scan ==="
 
                     trivy image \
