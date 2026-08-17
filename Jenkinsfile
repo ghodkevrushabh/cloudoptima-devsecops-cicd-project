@@ -117,10 +117,25 @@ pipeline {
                 dir('application') {
                     deleteDir()
 
-                    git(
-                        branch: 'main',
-                        url: "${params.APP_REPO_URL}"
-                    )
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [[name: '*/main']],
+                        doGenerateSubmoduleConfigurations: false,
+                        extensions: [
+                            [
+                                $class: 'CloneOption',
+                                depth: 1,
+                                noTags: true,
+                                shallow: true,
+                                timeout: 15
+                            ]
+                        ],
+                        submoduleCfg: [],
+                        userRemoteConfigs: [[
+                            url: "${params.APP_REPO_URL}"
+                        ]]
+                    ])
+
                     sh '''
                         set -e
 
@@ -131,15 +146,15 @@ pipeline {
 
                         echo "=== Application Files ==="
                         find . -maxdepth 2 -type f \
-                        ! -path './.git/*' \
-                        ! -path './__pycache__/*' \
-                        | sort
+                          ! -path './.git/*' \
+                          ! -path './__pycache__/*' \
+                          | sort
 
-                        test -f app.py
-                        test -f requirements.txt
+                        test -f Dockerfile
+                        test -f package.json
 
                         echo "Application repository validation passed."
-                    '''                             
+                    '''
                 }
             }
         }
