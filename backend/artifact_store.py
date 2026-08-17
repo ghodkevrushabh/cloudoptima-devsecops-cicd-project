@@ -44,27 +44,38 @@ def create_iac_archive(app_name: str, generated_base_dir: str) -> str:
     ) as archive:
 
         for source_dir in (terraform_dir, ansible_dir):
-            for path in source_dir.rglob("*"):
-                if not path.is_file():
-                    continue
+            for root, dirs, files in os.walk(source_dir):
+                # Prune Terraform's downloaded provider/cache directory
+                # before traversal so we never scan hundreds of MB.
+                dirs[:] = [
+                    d for d in dirs
+                    if d != ".terraform"
+                ]
 
-                # Never package Terraform state, plans, or secrets.
-                if path.name.endswith(".tfstate"):
-                    continue
+                root_path = Path(root)
 
-                if path.name.endswith(".tfstate.backup"):
-                    continue
+                for filename in files:
+                    path = root_path / filename
 
-                if path.suffix in {".pem", ".key"}:
-                    continue
+                    # Never package Terraform state, plans, or secrets.
+                    if path.name.endswith(".tfstate"):
+                        continue
 
-                archive.write(
-                    path,
-                    arcname=path.relative_to(base_dir),
-                )
+                    if path.name.endswith(".tfstate.backup"):
+                        continue
+
+                    if path.name.endswith(".tfplan"):
+                        continue
+
+                    if path.suffix in {".pem", ".key"}:
+                        continue
+
+                    archive.write(
+                        path,
+                        arcname=path.relative_to(base_dir),
+                    )
 
     return str(archive_path)
-
 
 def upload_iac_archive(
     archive_path: str,

@@ -9,7 +9,7 @@ echo "=== Syncing platform outputs ==="
 
 echo
 echo "=== Starting CloudOptima ==="
-docker compose up -d --no-build --force-recreate flask
+docker-compose up -d --no-build --force-recreate flask
 
 echo
 echo "=== Verifying shared ALB values ==="
