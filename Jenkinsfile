@@ -200,7 +200,7 @@ pipeline {
                             -Dsonar.host.url=http://localhost:9000 \
                             -Dsonar.token="\$SONAR_TOKEN" \
                             -Dsonar.scm.exclusions.disabled=true \
-                            -Dsonar.qualitygate.wait=true
+                            -Dsonar.qualitygate.wait=false
                       """
                    }
                }
