@@ -267,31 +267,34 @@ pipeline {
 
         stage('SecOps: Policy Enforcement - OPA') {
             steps {
-                sh '''
-                    set -e
+                dir("${TF_DIR}") {
+                    sh '''
+                        set -e
 
-                    echo "=== OPA Terraform Policy Check ==="
+                        echo "=== OPA Terraform Policy Check ==="
 
-                    terraform show -json "${TF_DIR}/tfplan" \
-                        > "${TF_DIR}/tfplan.json"
+                        test -f tfplan
 
-                    opa eval \
-                        --format pretty \
-                        --data policies/opa/terraform.rego \
-                        --input "${TF_DIR}/tfplan.json" \
-                        'data.cloudoptima.terraform.deny' \
-                        > opa-result.txt
+                        terraform show -json tfplan > tfplan.json
 
-                    cat opa-result.txt
+                        opa eval \
+                            --format pretty \
+                            --data "${WORKSPACE}/policies/opa/terraform.rego" \
+                            --input tfplan.json \
+                            'data.cloudoptima.terraform.deny' \
+                            > opa-result.txt
 
-                    if grep -q 'EC2 instance' opa-result.txt; then
-                        echo "OPA policy violations detected."
-                        exit 1
-                    fi
+                        cat opa-result.txt
 
-                    echo "OPA policy check passed."
-                '''
-            }
+                        if grep -q 'EC2 instance' opa-result.txt; then
+                            echo "OPA policy violations detected."
+                            exit 1
+                        fi
+
+                        echo "OPA policy check passed."
+                     '''
+                 }
+             }
         }
         stage('Platform: Terraform') {
             steps {
