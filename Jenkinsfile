@@ -31,7 +31,7 @@ pipeline {
             choices: [
                 'subnet-0ec0b380e5d2e69eb',
                 'subnet-0515995fc55b98aa0',
-                'subnet-0d5e8fa1aed973590'
+                'subnet-07a3c1c1409e7c6de'
             ],
             description: 'Private application subnet/AZ. 1c, 1a, 1b respectively.'
         )
