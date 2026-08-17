@@ -281,8 +281,9 @@ resource "aws_security_group" "app_sg" {
   # ----------------------------------------------------------
   # Outbound traffic
   # ----------------------------------------------------------
-
+  #checkov:skip=CKV_AWS_382:Application EC2 requires outbound internet access through the private-subnet NAT Gateway for package updates, AWS APIs, and ECR image pulls.
   egress {
+    description = "Outbound traffic required for package updates, AWS APIs, and ECR access"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -296,10 +297,43 @@ resource "aws_security_group" "app_sg" {
   }
 }
 
+resource "aws_kms_key" "ecr" {
+  description             = "KMS key for ${var.app_name} ECR repository"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+
+  tags = {
+    Name        = "${var.app_name}-ecr-kms"
+    Environment = var.environment
+    ManagedBy   = "CloudOptima-IDP"
+  }
+}
+
+resource "aws_kms_key_policy" "ecr" {
+  key_id = aws_kms_key.ecr.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+
+    Statement = [
+      {
+        Sid    = "EnableAccountAdministration"
+        Effect = "Allow"
+
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+
+        Action   = "kms:*"
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 # ============================================================
 # Application ECR Repository
 # ============================================================
-
 resource "aws_ecr_repository" "app" {
   name                 = "cloudoptima/${var.app_name}"
   image_tag_mutability = "IMMUTABLE"
@@ -309,7 +343,8 @@ resource "aws_ecr_repository" "app" {
   }
 
   encryption_configuration {
-    encryption_type = "AES256"
+    encryption_type = "KMS"
+    kms_key         = aws_kms_key.ecr.arn
   }
 
   tags = {
@@ -399,9 +434,9 @@ resource "aws_instance" "app_server" {
 
   ami           = data.aws_ssm_parameter.ubuntu_ami.value
   instance_type = var.instance_type
-
+  ebs_optimized = true
   subnet_id = data.aws_subnet.application.id
-
+  monitoring = true
   vpc_security_group_ids = [
     aws_security_group.app_sg.id
   ]
