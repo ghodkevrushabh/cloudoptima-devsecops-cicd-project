@@ -103,9 +103,6 @@ Prometheus + Node Exporter + Loki/Promtail
 
 ![CloudOptima Overall Architecture](cloudoptima-overall-architecture.png)
 
-> **Use the final architecture image above as the primary recruiter-facing architecture.**
->
-> Recommended companion diagrams are kept separately under `docs/architecture/`.
 
 ### Architecture layers
 
