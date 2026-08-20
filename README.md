@@ -289,15 +289,12 @@ This repository is intentionally documented in phases.
 
 ### Security Operations
 
-> **Screenshot placeholder**
->
-> `docs/screenshots/wazuh/final-dashboard.png`
+![SIEM (Wazuh Dashboard)](final-dashboard1.png)
+![SIEM (Wazuh Dashboard)](final-dashboard2.png)
 
 ### AWS WAF
 
-> **Screenshot placeholder**
->
-> `docs/screenshots/waf/waf-dashboard.png`
+![AWS WAF-dashboard](waf-dashboard.png)
 
 ### Suricata
 
