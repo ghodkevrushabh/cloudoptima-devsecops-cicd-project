@@ -310,9 +310,8 @@ AWS Traffic Mirroring was used to copy Juice Shop ENI traffic to the Suricata se
 
 ### Observability
 
-> **Screenshot placeholder**
->
-> `docs/screenshots/grafana/final-observability-dashboard.png`
+![Observability](final-observability-dashboard.png)
+![Observability](operational-logs.png)
 
 ---
 
