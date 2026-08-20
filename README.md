@@ -2195,3 +2195,1258 @@ The implementation also provides several valuable engineering lessons:
 **Phase 2 complete.**
 
 ➡️ Continue with **Phase 3 — DevSecOps CI/CD Pipeline**.
+
+
+
+# CloudOptima — Phase 3
+## DevSecOps CI/CD Pipeline Documentation
+
+> **Phase 3 documents the implementation, execution flow, security gates, infrastructure checks, container security, artifact publishing, and deployment hand-off of the CloudOptima DevSecOps pipeline.**
+>
+> This phase is written for engineers/recruiters evaluating the project for **DevSecOps Engineer, DevOps Engineer, Cloud Security Engineer, SOC/Cloud Security Analyst, and Cybersecurity Engineer** roles.
+
+---
+
+## 1. Pipeline Objective
+
+CloudOptima uses Jenkins as the DevSecOps execution engine.
+
+The goal is to ensure that infrastructure and application changes pass multiple automated quality, security, compliance, cost, and container checks before they are allowed to proceed toward deployment.
+
+### High-Level Flow
+
+```text
+Developer
+   │
+   ▼
+GitHub Repository
+   │
+   ▼
+Jenkins
+   │
+   ├── Source Checkout
+   │
+   ├── Code Quality
+   │      └── SonarQube
+   │
+   ├── Secret Detection
+   │      └── GitLeaks
+   │
+   ├── Terraform Validation
+   │      ├── terraform fmt
+   │      ├── terraform validate
+   │      └── terraform plan
+   │
+   ├── IaC Security
+   │      └── Checkov
+   │
+   ├── Cost Estimation
+   │      └── Infracost
+   │
+   ├── Policy Enforcement
+   │      └── OPA
+   │
+   ├── Container Build
+   │      └── Docker
+   │
+   ├── Container Security
+   │      └── Trivy
+   │
+   ├── Artifact Publishing
+   │      └── Amazon ECR
+   │
+   ├── Infrastructure Deployment
+   │      └── Terraform
+   │
+   └── Configuration / Application Deployment
+          └── Ansible
+```
+
+---
+
+# 2. DevSecOps Philosophy
+
+The pipeline follows a **shift-left security** model.
+
+Security is not performed only after deployment. Instead, security controls are introduced at multiple points:
+
+```text
+Code
+ ↓
+Secrets
+ ↓
+Infrastructure
+ ↓
+Policy
+ ↓
+Cost
+ ↓
+Container
+ ↓
+Registry
+ ↓
+Deployment
+ ↓
+Runtime
+```
+
+This reduces the chance that an insecure infrastructure or application change reaches production/runtime environments.
+
+---
+
+# 3. Why Jenkins?
+
+Jenkins acts as the central CI/CD orchestrator.
+
+### Jenkins responsibilities
+
+- Pull source code from GitHub
+- Execute pipeline stages
+- Run security tools
+- Run Terraform workflows
+- Build Docker images
+- Scan images
+- Push approved images to Amazon ECR
+- Execute deployment workflows
+- Provide build history and stage-level evidence
+
+### Important engineering decision
+
+Jenkins is **not used as an attacker machine**.
+
+All attack demonstrations are performed from the dedicated Kali testing environment.
+
+Jenkins remains a DevSecOps/CI machine and is monitored by Wazuh as a protected infrastructure component.
+
+---
+
+# 4. Source Control Flow
+
+```text
+Developer
+   │
+   │ git push
+   ▼
+GitHub
+   │
+   │ Jenkins trigger
+   ▼
+Jenkins Pipeline
+```
+
+The repository remains the source of truth.
+
+## Git workflow
+
+```text
+Working branch
+     │
+     ▼
+Commit
+     │
+     ▼
+Push to GitHub
+     │
+     ▼
+Jenkins checkout
+     │
+     ▼
+Automated pipeline
+```
+
+### Important operational rule
+
+**Repository files should not be edited or committed from the Jenkins workspace.**
+
+Changes to:
+
+- `Jenkinsfile`
+- Terraform
+- Ansible
+- application source
+- policy files
+- pipeline configuration
+
+should be made from the proper development/source location and pushed to GitHub.
+
+Jenkins should then check out the new commit and execute it.
+
+This avoids detached-HEAD/workspace-state problems and preserves a clean CI/CD model.
+
+---
+
+# 5. Jenkins Pipeline Stages
+
+## Stage 1 — Checkout
+
+The pipeline begins by checking out the exact Git revision associated with the build.
+
+Conceptually:
+
+```text
+GitHub
+   ↓
+Jenkins checkout
+   ↓
+Workspace
+```
+
+### Why it matters
+
+The build must be tied to a reproducible source revision.
+
+---
+
+## Stage 2 — SonarQube
+
+SonarQube performs static code-quality analysis.
+
+### Purpose
+
+- Detect code smells
+- Detect maintainability issues
+- Detect bugs
+- Detect security-related code findings
+- Produce a quality gate
+
+### Security role
+
+This is an **application-code security and quality** control.
+
+It should happen before deployment.
+
+### Evidence placeholder
+
+> 📸 **Screenshot — SonarQube Analysis**
+>
+> `docs/screenshots/devsecops/sonarqube-analysis.png`
+
+> 📸 **Screenshot — SonarQube Quality Gate**
+>
+> `docs/screenshots/devsecops/sonarqube-quality-gate.png`
+
+---
+
+# 6. GitLeaks
+
+GitLeaks is used to detect secrets in repository content.
+
+### Purpose
+
+Detect accidentally committed:
+
+- API keys
+- credentials
+- tokens
+- passwords
+- other sensitive strings
+
+### Pipeline concept
+
+```text
+GitHub source
+     ↓
+GitLeaks
+     ↓
+PASS / FAIL
+```
+
+### Security significance
+
+This prevents a secret from progressing further through the delivery pipeline.
+
+### Evidence placeholders
+
+> 📸 `docs/screenshots/devsecops/gitleaks-pass.png`
+
+> 📸 `docs/screenshots/devsecops/gitleaks-failure-example.png`
+
+---
+
+# 7. Terraform Validation
+
+Terraform is used as the infrastructure-as-code layer.
+
+The pipeline validates Terraform before deployment.
+
+Typical validation flow:
+
+```text
+terraform fmt
+      ↓
+terraform validate
+      ↓
+terraform plan
+```
+
+### Terraform formatting
+
+```bash
+terraform fmt -check
+```
+
+Purpose:
+
+- enforce consistent formatting
+- prevent formatting drift
+
+### Terraform validation
+
+```bash
+terraform validate
+```
+
+Purpose:
+
+- validate Terraform configuration
+- catch syntax and configuration errors
+
+### Terraform plan
+
+```bash
+terraform plan
+```
+
+Purpose:
+
+- show intended infrastructure changes
+- identify create/update/destroy operations
+- provide a deployment preview
+
+---
+
+# 8. Terraform State
+
+CloudOptima uses remote Terraform state.
+
+The infrastructure workflow includes:
+
+```text
+Terraform
+   ↓
+S3 state
+   +
+state locking
+```
+
+The state backend was established separately from the CloudTrail bucket.
+
+### Important separation
+
+The following S3 responsibilities remain logically separated:
+
+```text
+Terraform state bucket
+        ≠
+IDP artifact bucket
+        ≠
+CloudTrail bucket
+```
+
+This prevents unrelated infrastructure data from being mixed together.
+
+### Evidence placeholders
+
+> 📸 Terraform backend configuration:
+>
+> `docs/screenshots/devsecops/terraform-backend.png`
+
+> 📸 Terraform plan:
+>
+> `docs/screenshots/devsecops/terraform-plan.png`
+
+---
+
+# 9. AWS Credential Model
+
+The DevSecOps environment uses AWS IAM roles rather than embedding long-lived credentials into pipeline code.
+
+Earlier troubleshooting established that the Jenkins EC2 environment can obtain AWS identity through its attached role.
+
+Example verification used during implementation:
+
+```bash
+aws sts get-caller-identity
+```
+
+### Example identity verification
+
+```text
+Account: 411902101270
+Arn: arn:aws:sts::<account>:assumed-role/cloudoptima-devsecops-role/...
+```
+
+### Security principle
+
+Credentials should be supplied by AWS IAM/instance roles or appropriate CI credential mechanisms rather than committed to Git.
+
+---
+
+# 10. Checkov
+
+Checkov is the primary Terraform/IaC security scanning stage.
+
+### Purpose
+
+Checkov evaluates infrastructure definitions for security and compliance risks.
+
+```text
+Terraform
+   ↓
+Checkov
+   ↓
+PASS / FAIL
+```
+
+### Typical command
+
+```bash
+checkov -d .
+```
+
+or an equivalent Terraform-directory invocation used by the pipeline.
+
+### Security value
+
+Examples of issues Checkov can identify include:
+
+- publicly exposed infrastructure
+- weak security-group controls
+- missing encryption
+- insecure IAM configurations
+- missing logging
+- weak storage security
+
+### Evidence placeholders
+
+> 📸 `docs/screenshots/devsecops/checkov-pass.png`
+
+> 📸 `docs/screenshots/devsecops/checkov-findings.png`
+
+---
+
+# 11. Infracost
+
+Infracost provides infrastructure cost visibility during CI/CD.
+
+### Purpose
+
+```text
+Terraform change
+      ↓
+Infracost
+      ↓
+Estimated cost impact
+```
+
+This creates a **FinOps + DevOps** control rather than a purely technical deployment pipeline.
+
+### Why it matters
+
+A technically valid infrastructure change can still be financially undesirable.
+
+Infracost helps reviewers understand:
+
+- estimated monthly cost
+- cost increase/decrease
+- impact of infrastructure changes
+
+### Evidence placeholders
+
+> 📸 `docs/screenshots/devsecops/infracost-plan.png`
+
+> 📸 `docs/screenshots/devsecops/infracost-diff.png`
+
+---
+
+# 12. OPA
+
+Open Policy Agent is used for policy-as-code enforcement.
+
+### Concept
+
+```text
+Infrastructure / pipeline data
+             ↓
+            OPA
+             ↓
+     Policy decision
+       ├── allow
+       └── deny
+```
+
+### Why OPA?
+
+Security and governance controls become machine-enforced policies instead of informal review comments.
+
+Examples of policies that can be implemented later include:
+
+```text
+No public S3 buckets
+No unrestricted SSH
+Required encryption
+Required tagging
+Required logging
+Approved AWS regions
+Approved resource types
+```
+
+### Evidence placeholders
+
+> 📸 `docs/screenshots/devsecops/opa-pass.png`
+
+> 📸 `docs/screenshots/devsecops/opa-denied-policy.png`
+
+---
+
+# 13. Docker Build
+
+After application and infrastructure quality/security checks, the application container can be built.
+
+Conceptually:
+
+```text
+Application source
+       ↓
+Docker build
+       ↓
+Image
+```
+
+### Typical command
+
+```bash
+docker build -t <image-name>:<tag> .
+```
+
+The exact image name/tag should be taken from the project's actual `Jenkinsfile` and repository configuration.
+
+---
+
+# 14. Trivy
+
+Trivy provides container vulnerability scanning.
+
+### Flow
+
+```text
+Docker image
+      ↓
+Trivy
+      ↓
+Vulnerability report
+      ↓
+PASS / FAIL
+```
+
+### Typical scan
+
+```bash
+trivy image <image>:<tag>
+```
+
+### Why it matters
+
+The application source can be clean while its container dependencies still contain vulnerable OS packages or libraries.
+
+Trivy therefore adds a separate **container security layer**.
+
+### Evidence placeholders
+
+> 📸 `docs/screenshots/devsecops/trivy-scan.png`
+
+> 📸 `docs/screenshots/devsecops/trivy-clean.png`
+
+---
+
+# 15. Amazon ECR
+
+Approved container images are pushed to Amazon Elastic Container Registry.
+
+Conceptually:
+
+```text
+Docker image
+     ↓
+Trivy
+     ↓
+Approved image
+     ↓
+Amazon ECR
+```
+
+### Why ECR?
+
+ECR provides:
+
+- private container image storage
+- AWS-native integration
+- IAM-based access
+- image lifecycle capabilities
+- integration with deployment infrastructure
+
+### Evidence placeholders
+
+> 📸 `docs/screenshots/devsecops/ecr-repository.png`
+
+> 📸 `docs/screenshots/devsecops/ecr-image.png`
+
+---
+
+# 16. Ansible
+
+Ansible is used for configuration/application deployment tasks that are better suited to configuration management than Terraform.
+
+Conceptually:
+
+```text
+Infrastructure created by Terraform
+             ↓
+        Ansible
+             ↓
+Configuration / application setup
+```
+
+### Separation of responsibility
+
+```text
+Terraform
+→ Infrastructure lifecycle
+
+Ansible
+→ Configuration / application lifecycle
+```
+
+This separation makes the automation design easier to maintain.
+
+### Typical command form
+
+```bash
+ansible-playbook <playbook>.yml
+```
+
+The exact playbook name and inventory should be documented from the final repository files.
+
+### Evidence placeholders
+
+> 📸 `docs/screenshots/devsecops/ansible-run.png`
+
+> 📸 `docs/screenshots/devsecops/ansible-success.png`
+
+---
+
+# 17. Pipeline Security Gates
+
+The overall model is:
+
+```text
+                    ┌─────────────┐
+                    │   GitHub    │
+                    └──────┬──────┘
+                           │
+                           ▼
+                    ┌─────────────┐
+                    │   Jenkins   │
+                    └──────┬──────┘
+                           │
+        ┌──────────────────┼──────────────────┐
+        ▼                  ▼                  ▼
+   SonarQube            GitLeaks          Terraform
+        │                  │                  │
+        └──────────────────┼──────────────────┘
+                           ▼
+                        Checkov
+                           │
+                           ▼
+                       Infracost
+                           │
+                           ▼
+                           OPA
+                           │
+                           ▼
+                       Docker
+                           │
+                           ▼
+                         Trivy
+                           │
+                           ▼
+                          ECR
+                           │
+                           ▼
+                       Terraform
+                           │
+                           ▼
+                        Ansible
+```
+
+The purpose is that **a deployment should progress only after the applicable gates succeed**.
+
+---
+
+# 18. Build Failure Philosophy
+
+A production-quality DevSecOps pipeline should fail fast when a security gate fails.
+
+Examples:
+
+```text
+GitLeaks detects secret
+       ↓
+Build stops
+```
+
+```text
+Checkov finds critical IaC issue
+       ↓
+Build stops
+```
+
+```text
+Trivy finds policy-breaking vulnerability
+       ↓
+Image promotion stops
+```
+
+```text
+Terraform validation fails
+       ↓
+Infrastructure deployment stops
+```
+
+This prevents the pipeline from behaving like a simple build-and-deploy script.
+
+---
+
+# 19. Recommended Stage Classification
+
+| Stage | Category | Primary Goal |
+|---|---|---|
+| Checkout | CI | Reproducible source |
+| SonarQube | Code Security | Quality/static analysis |
+| GitLeaks | Secret Security | Prevent credential leakage |
+| Terraform fmt | IaC Quality | Formatting |
+| Terraform validate | IaC Quality | Configuration correctness |
+| Terraform plan | IaC | Change preview |
+| Checkov | IaC Security | Security/compliance |
+| Infracost | FinOps | Cost visibility |
+| OPA | Governance | Policy enforcement |
+| Docker Build | Packaging | Container image |
+| Trivy | Container Security | Vulnerability scan |
+| ECR | Artifact | Secure registry |
+| Terraform Apply | Infrastructure | Provision |
+| Ansible | Configuration | Configure/deploy |
+| Wazuh/Suricata/WAF | Runtime Security | Detect/protect |
+| Grafana/Loki/Prometheus | Observability | Monitor |
+
+---
+
+# 20. DevSecOps → Runtime Security Handoff
+
+One of the strongest aspects of CloudOptima is that the pipeline does not stop after deployment.
+
+```text
+CI/CD
+  ↓
+Secure artifact
+  ↓
+Secure infrastructure
+  ↓
+Runtime
+  ↓
+AWS WAF
+  ↓
+Suricata
+  ↓
+Wazuh
+  ↓
+Grafana / observability
+```
+
+This connects **DevSecOps** with **runtime security operations**.
+
+---
+
+# 21. How the Pipeline Connects to the SOC
+
+The two major paths are:
+
+### Delivery path
+
+```text
+GitHub
+  ↓
+Jenkins
+  ↓
+Security gates
+  ↓
+Deployment
+```
+
+### Runtime security path
+
+```text
+Running workload
+  ↓
+WAF / Suricata / Wazuh
+  ↓
+Detection
+  ↓
+SOC investigation
+```
+
+Therefore the platform covers both:
+
+```text
+SECURE DELIVERY
+        +
+SECURE RUNTIME
+```
+
+---
+
+# 22. Evidence Collection Checklist
+
+Place screenshots under:
+
+```text
+docs/
+└── screenshots/
+    └── devsecops/
+```
+
+Recommended filenames:
+
+```text
+github-repository.png
+jenkins-pipeline-success.png
+jenkins-stage-overview.png
+
+sonarqube-analysis.png
+sonarqube-quality-gate.png
+
+gitleaks-pass.png
+gitleaks-failure-example.png
+
+terraform-fmt.png
+terraform-validate.png
+terraform-plan.png
+
+checkov-pass.png
+checkov-findings.png
+
+infracost-plan.png
+infracost-diff.png
+
+opa-policy-result.png
+
+docker-build.png
+trivy-scan.png
+trivy-pass.png
+
+ecr-repository.png
+ecr-image.png
+
+ansible-run.png
+ansible-success.png
+```
+
+---
+
+# 23. Screenshot Placeholder Block for GitHub
+
+Use a consistent pattern throughout the repository:
+
+```markdown
+## Jenkins Pipeline
+
+![Jenkins Pipeline](docs/screenshots/devsecops/jenkins-pipeline-success.png)
+
+> **Evidence:** Successful execution of the CloudOptima DevSecOps pipeline.
+```
+
+For stage-level screenshots:
+
+```markdown
+### Checkov
+
+![Checkov](docs/screenshots/devsecops/checkov-pass.png)
+
+> **Security Gate:** Infrastructure-as-Code security validation.
+```
+
+---
+
+# 24. Pipeline Evidence Matrix
+
+| Control | Tool | Evidence | Status |
+|---|---|---|---|
+| Source control | GitHub | Repository screenshot | ✅ |
+| Pipeline orchestration | Jenkins | Successful pipeline | ✅ |
+| Code quality | SonarQube | Quality gate | ✅ |
+| Secret scanning | GitLeaks | Scan result | ✅ |
+| IaC validation | Terraform | Validate/plan | ✅ |
+| IaC security | Checkov | Scan result | ✅ |
+| Cost estimation | Infracost | Cost report | ✅ |
+| Policy | OPA | Policy result | ✅ |
+| Container build | Docker | Build output | ✅ |
+| Container security | Trivy | Vulnerability report | ✅ |
+| Artifact registry | ECR | Image/repository | ✅ |
+| Infrastructure deployment | Terraform | Apply result | ✅ |
+| Configuration management | Ansible | Playbook result | ✅ |
+| Runtime security | WAF/Suricata/Wazuh | See Phase 5 | ✅ |
+
+> Replace/check each ✅ against the actual screenshot/evidence captured during implementation.
+
+---
+
+# 25. Troubleshooting Record
+
+This section should document real implementation failures rather than hiding them.
+
+Examples of issues encountered during the project include:
+
+### AWS credential troubleshooting
+
+```bash
+aws sts get-caller-identity
+```
+
+Used to confirm the AWS identity available to the CI environment.
+
+### Terraform credential failure
+
+Initial Terraform execution failed because valid AWS credential sources were not available.
+
+Resolution:
+
+- install/configure AWS CLI where needed
+- use IAM role-based credentials
+- validate identity with `aws sts get-caller-identity`
+
+### Jenkins Java compatibility
+
+Jenkins initially reported a Java-version requirement because the installed runtime did not meet the required version.
+
+Document:
+
+```text
+Problem
+Root cause
+Remediation
+Verification
+```
+
+### Jenkins workspace safety
+
+Avoid committing repository changes from a Jenkins workspace/detached-HEAD state.
+
+Preferred:
+
+```text
+Developer/source clone
+    ↓
+GitHub
+    ↓
+Jenkins checkout
+```
+
+---
+
+# 26. Security Design Decisions
+
+## Decision 1 — GitHub as source of truth
+
+Why:
+
+- traceability
+- version control
+- pull-request workflow
+- rollback
+- collaboration
+
+## Decision 2 — IAM roles over static AWS secrets
+
+Why:
+
+- temporary credentials
+- reduced credential leakage risk
+- AWS-native authentication
+
+## Decision 3 — Checkov before deployment
+
+Why:
+
+- catch insecure IaC before provisioning
+
+## Decision 4 — Trivy before ECR promotion
+
+Why:
+
+- prevent known vulnerable container images from being promoted
+
+## Decision 5 — WAF at ALB
+
+Why:
+
+```text
+Internet
+   ↓
+WAF
+   ↓
+ALB
+   ↓
+Application
+```
+
+Attack requests can be blocked before reaching the application.
+
+## Decision 6 — Suricata as IDS
+
+Suricata remains a passive monitoring sensor connected through AWS Traffic Mirroring.
+
+It is **not configured as an inline IPS gateway**.
+
+Therefore:
+
+```text
+WAF
+→ prevention
+
+Suricata
+→ network detection
+
+Wazuh
+→ SIEM/correlation
+```
+
+---
+
+# 27. Important Port-Scan Design Decision
+
+An attempted port-scan demonstration was evaluated during implementation.
+
+The final design intentionally does **not** force this through Suricata.
+
+Reason:
+
+```text
+Kali
+  ↓
+ALB
+  ↓
+Juice Shop
+```
+
+while Traffic Mirroring observes the **Juice Shop ENI**, not the ALB.
+
+Therefore ALB-level probes that terminate at the ALB do not necessarily traverse the monitored Juice Shop ENI.
+
+Rather than introducing unnecessary routing/in-line infrastructure late in the project, the project retains:
+
+```text
+WAF
+→ ALB/application protection
+
+Suricata
+→ backend mirrored traffic
+```
+
+This is an intentional architectural limitation, not a Suricata failure.
+
+---
+
+# 28. Recruiter-Relevant Skills Demonstrated
+
+This phase demonstrates practical experience with:
+
+### DevOps
+
+- Jenkins
+- GitHub
+- Docker
+- ECR
+- Terraform
+- Ansible
+
+### DevSecOps
+
+- GitLeaks
+- SonarQube
+- Checkov
+- OPA
+- Trivy
+- IAM
+- policy gates
+
+### Cloud
+
+- AWS
+- EC2
+- S3
+- ALB
+- IAM
+- ECR
+- WAF
+- CloudTrail
+
+### Security
+
+- Infrastructure-as-Code security
+- secret detection
+- container security
+- policy-as-code
+- web application protection
+- runtime monitoring
+
+### SOC / Detection
+
+- Wazuh
+- Suricata
+- CloudTrail ingestion
+- attack validation
+- alert correlation
+
+---
+
+# 29. Final Pipeline Summary
+
+CloudOptima's CI/CD pipeline is not simply:
+
+```text
+Build → Deploy
+```
+
+It is:
+
+```text
+                 CLOUDOPTIMA DEVSECOPS
+
+GitHub
+   │
+   ▼
+Jenkins
+   │
+   ├── SonarQube
+   ├── GitLeaks
+   ├── Terraform
+   ├── Checkov
+   ├── Infracost
+   ├── OPA
+   ├── Docker
+   ├── Trivy
+   ├── ECR
+   ├── Terraform Apply
+   └── Ansible
+          │
+          ▼
+       Runtime
+          │
+          ├── AWS WAF
+          ├── Suricata
+          ├── Wazuh
+          ├── CloudTrail
+          ├── Prometheus
+          ├── Loki
+          └── Grafana
+```
+
+This creates a complete lifecycle:
+
+```text
+PLAN
+ ↓
+CODE
+ ↓
+SCAN
+ ↓
+VALIDATE
+ ↓
+SECURE
+ ↓
+BUILD
+ ↓
+SCAN
+ ↓
+PUBLISH
+ ↓
+DEPLOY
+ ↓
+MONITOR
+ ↓
+DETECT
+ ↓
+RESPOND
+```
+
+---
+
+# 30. Phase 3 Screenshot Checklist
+
+Before merging this phase into the main README, collect:
+
+- [ ] GitHub repository
+- [ ] Jenkins pipeline overview
+- [ ] Jenkins successful build
+- [ ] SonarQube quality gate
+- [ ] GitLeaks scan
+- [ ] Terraform validate
+- [ ] Terraform plan
+- [ ] Checkov
+- [ ] Infracost
+- [ ] OPA
+- [ ] Docker build
+- [ ] Trivy
+- [ ] ECR
+- [ ] Terraform deployment
+- [ ] Ansible deployment
+
+Store them under:
+
+```text
+docs/screenshots/devsecops/
+```
+
+---
+
+# 31. Next Phase
+
+**Phase 4 — AWS Infrastructure & Cloud Architecture**
+
+Phase 4 should document:
+
+```text
+AWS Account
+   │
+   ├── VPC
+   ├── Subnets
+   ├── Security Groups
+   ├── EC2
+   ├── ALB
+   ├── Target Groups
+   ├── IAM
+   ├── S3
+   ├── CloudTrail
+   ├── Traffic Mirroring
+   └── WAF
+```
+
+It will also document:
+
+- infrastructure relationships
+- networking
+- IAM decisions
+- Terraform structure
+- state management
+- security boundaries
+- Traffic Mirroring architecture
+- CloudTrail architecture
+- WAF placement
+- commands used during implementation
+- troubleshooting
+- final-state configuration
+- screenshot placeholders
+
+---
+
+> **Documentation rule:** command examples in this phase should be reconciled with the final repository/Jenkinsfile before publication. Do not publish secrets, private keys, session tokens, passwords, `.env` values, CloudTrail credentials, or other sensitive material.
+
