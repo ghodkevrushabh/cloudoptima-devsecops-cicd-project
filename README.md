@@ -77,7 +77,7 @@ Prometheus + Loki
 
 > **Architecture image placeholder**
 >
-> `cloudoptima-overall-architecture.png`
+> `cloudoptima-devsecops-cicd-project/cloudoptima-overall-architecture.png`
 
 ---
 
