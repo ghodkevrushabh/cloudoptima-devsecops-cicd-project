@@ -75,10 +75,9 @@ Prometheus + Loki
     Grafana
 ```
 
-> **Architecture image placeholder**
->
-> `docs/cloudoptima-overall-architecture.png`
+## 🏗️ Overall Architecture
 
+![CloudOptima Overall Architecture](cloudoptima-overall-architecture.png)
 ---
 
 ## 🎯 Why CloudOptima?
