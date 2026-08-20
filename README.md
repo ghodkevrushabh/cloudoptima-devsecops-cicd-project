@@ -642,7 +642,7 @@ Grafana
 
 ---
 
-# 👤 Resume-Ready Project Description
+# 👤 Short Project Description
 
 > **CloudOptima — Internal Developer Platform & DevSecOps Security Platform**
 >
@@ -650,102 +650,6 @@ Grafana
 
 ---
 
-# 🎤 Recruiter Demonstration
-
-## 5-Minute Demo
-
-```text
-1. Architecture
-2. Jenkins pipeline
-3. Wazuh dashboard
-4. AWS WAF dashboard
-5. One live SQLi test
-6. HTTP 403
-7. WAF matching rule
-8. Wazuh/Suricata/CloudTrail evidence
-```
-
-## 15-Minute Technical Demo
-
-```text
-1. IDP
-2. GitHub
-3. Jenkins
-4. security gates
-5. Terraform
-6. AWS architecture
-7. WAF
-8. Traffic Mirror
-9. Suricata
-10. Wazuh
-11. CloudTrail
-12. Grafana
-13. attack validation
-14. troubleshooting example
-15. production roadmap
-```
-
----
-
-# 📁 Final Repository Layout
-
-```text
-CloudOptima/
-│
-├── README.md
-├── LICENSE
-├── SECURITY.md
-├── CONTRIBUTING.md
-├── CHANGELOG.md
-├── .gitignore
-│
-├── docs/
-│   ├── architecture/
-│   ├── phases/
-│   ├── attacks/
-│   ├── runbooks/
-│   ├── troubleshooting/
-│   ├── security/
-│   └── screenshots/
-│
-├── platform/
-├── infrastructure/
-├── devsecops/
-├── security/
-├── observability/
-└── scripts/
-```
-
----
-
-# 🔐 Public Repository Checklist
-
-Before publishing:
-
-```text
-[ ] no AWS access keys
-[ ] no AWS secret keys
-[ ] no passwords
-[ ] no private keys
-[ ] no .env files with secrets
-[ ] no Wazuh client.keys
-[ ] no Terraform state
-[ ] no session tokens
-[ ] no Jenkins credentials
-[ ] no database passwords
-[ ] screenshots sanitized
-[ ] GitLeaks clean
-[ ] git diff reviewed
-[ ] .gitignore tested
-```
-
-Run before push:
-
-```bash
-git status
-git diff
-gitleaks detect
-```
 
 ---
 
@@ -773,21 +677,7 @@ This avoids detached-HEAD and CI-workspace state problems.
 
 ---
 
-# 📜 License
 
-Add an appropriate open-source license to the repository if the project is intended to be public.
-
-Examples:
-
-```text
-MIT
-Apache-2.0
-GPL-3.0
-```
-
-Choose the license deliberately and check third-party component licensing before redistributing code or assets.
-
----
 
 # 🛡️ Security Disclaimer
 
