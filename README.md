@@ -763,15 +763,15 @@ BLOCK
 ## Screenshots
 Sending SQL Injection Attack From Kali Linux. 
 
-![kali](docs/waf/01-sqli-request.png)
+![kali](docs/screenshots/waf/01-sqli-request.png)
 
 Attack detected by wazuh
 
-![wazuh](docs/wazuh/01-sqli-403.png)
+![wazuh](docs/screenshots/wazuh/01-sqli-403.png)
 
 WAF detected the SQLi attack, and according to the rule (AWS#AWSManagedRulesSQLiRuleSet) it Blocked the attack
 
-![waf-rule](docs/waf/01-sqli-waf-rule.png)
+![waf-rule](docs/screenshots/waf/01-sqli-waf-rule.png)
 
 
 ---
