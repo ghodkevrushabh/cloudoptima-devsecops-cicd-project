@@ -684,20 +684,22 @@ Capture the browser with the **real deployed application URL visible**.
 
 ---
 
-## browser/curl-based testing / Web Testing Evidence
+## curl-based testing
 
 > 📸 **Recommended screenshot**
 >
-> `docs/screenshots/application/web-testing-browser-curl.png`
+![web-testing-browser-curl](docs/screenshots/application/web-testing-browser-curl.png)
 
-Show:
 
 ```text
-browser/curl-based testing
+curl-based testing
    ↓
-Target / Proxy / HTTP history
+Target 
    ↓
-CloudOptima ALB / Juice Shop
+CloudOptima ALB
+   ↓
+ Juice Shop
+
 ```
 
 Do not expose:
@@ -712,94 +714,7 @@ personal data
 
 ---
 
-# 🎥 Attack Demonstration Strategy
-
-## Should attacks be screenshots or video?
-
-Use **both**, but give each a different role.
-
-### Screenshots = permanent technical evidence
-
-For each attack, keep:
-
-```text
-1. Attack request
-2. HTTP response
-3. WAF / detection rule
-4. Wazuh/Suricata evidence when applicable
-```
-
-This makes the repository independently reviewable.
-
-### Video = live demonstration
-
-Create **one short end-to-end demo video** showing:
-
-```text
-Normal request
-      ↓
-SQLi
-      ↓
-403
-      ↓
-WAF evidence
-      ↓
-Wazuh/Security dashboard
-```
-
-Then briefly show the other four validated attacks.
-
-Recommended:
-
-```text
-docs/demo/cloudoptima-security-demo.mp4
-```
-
-or an external unlisted YouTube/Drive link if repository size is a concern.
-
-### Recommended balance
-
-```text
-README
-  ↓
-screenshots + result tables
-
-Attack documentation
-  ↓
-screenshots + commands + evidence
-
-Video
-  ↓
-fast recruiter/technical demonstration
-```
-
-Do **not** rely on video alone.
-
----
-
-# 🔥 Attack Evidence Standard
-
-Every attack should have the same documentation format:
-
-```text
-Attack
-   ↓
-Command / Request
-   ↓
-Expected behavior
-   ↓
-Actual response
-   ↓
-Matching WAF / IDS / SIEM rule
-   ↓
-Security interpretation
-   ↓
-Screenshot
-```
-
-This creates a professional case-study format.
-
----
+# 🎥 Attack Demonstrations
 
 # 🧪 Attack 1 — SQL Injection
 
@@ -846,12 +761,18 @@ BLOCK
 ```
 
 ## Screenshots
+Sending SQL Injection Attack From Kali Linux. 
 
-```text
-docs/screenshots/attacks/01-sqli-request.png
-docs/screenshots/attacks/01-sqli-403.png
-docs/screenshots/attacks/01-sqli-waf-rule.png
-```
+![kali](docs/waf/01-sqli-request.png)
+
+Attack detected by wazuh
+
+![wazuh](docs/wazuh/01-sqli-403.png)
+
+WAF detected the SQLi attack, and according to the rule (AWS#AWSManagedRulesSQLiRuleSet) it Blocked the attack
+
+![waf-rule](docs/waf/01-sqli-waf-rule.png)
+
 
 ---
 
