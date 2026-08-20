@@ -301,6 +301,9 @@ This repository is intentionally documented in phases.
 
 ![Suricata](traffic-mirror-vxlan.png)
 
+AWS Traffic Mirroring was used to copy Juice Shop ENI traffic to the Suricata sensor.
+> **Evidence:** `tcpdump` captured VXLAN traffic over UDP/4789 from the Juice Shop ENI (`10.0.104.170`) to the Suricata sensor (`10.0.47.60`), confirming that mirrored traffic reached the sensor.
+
 ### DevSecOps
 
 ![Jenkins Pipeline Success](cicd-pipeline.png)
