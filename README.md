@@ -1,4 +1,4 @@
-# ☁️ CloudOptima: A DevSecOps-Integrated Internal Developer Platform for Automated, Secure & Policy-Governed AWS Provisioning 🕵
+# ☁️ CloudOptima: A DevSecOps-Integrated Internal Developer Platform for Automated, Secure & Policy-Governed AWS Provisioning 🕵️
 
 [![AWS](https://img.shields.io/badge/AWS-Cloud-orange?logo=amazonaws)](https://aws.amazon.com/)
 [![Jenkins](https://img.shields.io/badge/Jenkins-CI%2FCD-D24939?logo=jenkins)](https://www.jenkins.io/)
@@ -103,6 +103,9 @@ Prometheus + Node Exporter + Loki/Promtail
 
 ![CloudOptima Overall Architecture](cloudoptima-overall-architecture.png)
 
+> **Use the final architecture image above as the primary recruiter-facing architecture.**
+>
+> Recommended companion diagrams are kept separately under `docs/architecture/`.
 
 ### Architecture layers
 
@@ -157,13 +160,14 @@ Prometheus + Node Exporter + Loki/Promtail
 # 🔄 End-to-End Project Workflow
 
 ```text
-1. Developer requests infrastructure/application through the IDP
-2. IDP generates Terraform/Ansible/application artifacts
-3. Source is committed to GitHub
-4. Jenkins checks out the exact Git revision
-5. Pipeline executes quality/security/policy/cost checks
-6. Approved artifacts are built and published
-7. Terraform/Ansible deploy/configure the runtime
+1. Developer submits an application environment request through the Flask IDP.
+2. The request captures application name, repository URL, branch, target environment and application port.
+3. The IDP records the request and generates the deployment artifacts.
+4. The generated deployment information includes an artifact name, artifact key/long ZIP filename and subnet information.
+5. The developer/operator supplies the generated deployment values to the Jenkins parameterized pipeline.
+6. Jenkins checks out the repository and runs the parameterized build.
+7. The pipeline executes quality, secret, IaC, policy, cost and container checks.
+8. Approved artifacts are built/published and the runtime is deployed/configured.
 8. AWS WAF protects the public application path
 9. ALB routes legitimate traffic to Juice Shop
 10. Traffic Mirror copies selected backend traffic to Suricata
@@ -200,7 +204,125 @@ Prometheus + Node Exporter + Loki/Promtail
 | Visualization | Grafana |
 | Attack Testing | Kali Linux |
 | Application Target | OWASP Juice Shop |
-| Web Testing | Burp Suite / browser-based testing |
+| Web Testing | Browser + curl from Kali Linux |
+
+---
+
+
+# 🧭 Actual Implementation Details
+
+This section intentionally records the implementation workflow that was actually followed rather than using a simplified generic DevSecOps diagram.
+
+## Developer Request Path
+
+```text
+Developer
+   │
+   ▼
+Flask IDP
+   │
+   ├── Application Name
+   ├── Repository URL
+   ├── Branch
+   ├── Environment
+   └── Port
+   │
+   ▼
+PostgreSQL / request record
+   │
+   ▼
+Terraform + Ansible generation
+   │
+   ▼
+Artifact generation
+   │
+   ├── Artifact Name
+   ├── Artifact Key / generated ZIP filename
+   └── Subnet information
+   │
+   ▼
+Jenkins "Build with Parameters"
+   │
+   ▼
+Parameterized Jenkins pipeline
+   │
+   ▼
+Secure build / scan / deployment
+```
+
+## What the portal actually looked like
+
+The implemented portal presented a **Request New Application Environment** form and accepted values such as:
+
+```text
+Application Name
+GitHub Repository URL
+Git Branch
+Target Environment
+Application Port
+```
+
+The portal also exposed an **Infrastructure Requests** table showing request records such as:
+
+```text
+ID
+App Name
+Repository
+Branch
+Environment
+Port
+Instance Size
+Status
+```
+
+These are important screenshots for proving the IDP functionality.
+
+> 📸 `docs/screenshots/idp/flask-idp-portal.png`
+
+> 📸 `docs/screenshots/idp/deployment-requests.png`
+
+## What happened after submission
+
+The developer request was translated into generated deployment data.
+
+The implementation then required the generated values to be supplied to the Jenkins parameterized build, including:
+
+```text
+Application Name
+Repository URL
+Artifact Name
+Artifact Key
+Subnet
+```
+
+along with other deployment values such as branch, environment, application port and instance size.
+
+This is the key **IDP → CI/CD integration** story of CloudOptima.
+
+## Why this matters
+
+The IDP was not intended to replace Jenkins.
+
+Instead:
+
+```text
+IDP
+→ self-service request + artifact generation
+
+GitHub
+→ source control
+
+Jenkins
+→ controlled execution
+
+Terraform
+→ infrastructure
+
+Ansible
+→ configuration/deployment
+```
+
+That separation is an important platform-engineering design decision.
 
 ---
 
@@ -332,6 +454,73 @@ This proved mirrored traffic was reaching the Suricata sensor.
 > The exact security-group source/destination rules should be documented in the dedicated AWS networking runbook using the final Terraform configuration.
 
 ---
+
+
+## Verified Machine-to-Machine Communication
+
+The architecture should explicitly show which hosts communicated with which other hosts.
+
+| Source | Destination | Purpose | Evidence / Method |
+|---|---|---|---|
+| Developer/Browser | Flask IDP | Self-service request | Browser on deployed portal |
+| IDP | PostgreSQL | Request/application state | Flask + PostgreSQL implementation |
+| Developer/Source Git | GitHub | Source control | Git repository |
+| GitHub | Jenkins | CI/CD source retrieval/trigger | Jenkins pipeline |
+| Jenkins | AWS APIs | Infrastructure/deployment | IAM role + `aws sts get-caller-identity` |
+| Jenkins | ECR | Container image publishing | ECR pipeline stage |
+| Internet/Kali | AWS WAF | Web requests / attack tests | `curl`, browser |
+| WAF | ALB | Allowed web traffic | Normal request returned `200` |
+| ALB | Juice Shop | Application traffic | Deployed application |
+| Juice Shop | Wazuh Manager | Host security telemetry | Wazuh Agent 001 |
+| Juice Shop ENI | Suricata Sensor | Mirrored traffic | VXLAN/UDP 4789 packet capture |
+| Suricata Sensor | Wazuh Manager | Security telemetry | Wazuh Agent 002 |
+| AWS CloudTrail | S3 | Audit log delivery | CloudTrail trail |
+| S3 | Wazuh Manager | CloudTrail ingestion | Wazuh `aws-s3` module |
+| Prometheus | Node Exporter | Metrics scrape | TCP/9100 |
+| Grafana | Prometheus/Loki | Query/visualization | Monitoring stack |
+
+> Exact security-group rules, subnet IDs and route-table relationships should be copied from the final Terraform configuration before publication rather than guessed.
+
+## Key Port / Protocol Evidence
+
+| Port | Protocol | Component | Purpose |
+|---:|---|---|---|
+| 80 | TCP/HTTP | ALB / Juice Shop | Web application traffic |
+| 5000 | TCP/HTTP | Flask IDP | Prototype Flask portal during implementation |
+| 8080 | TCP/HTTP | Jenkins | Jenkins UI |
+| 1514 | TCP | Wazuh | Wazuh event transport observed during implementation |
+| 4789 | UDP | Traffic Mirroring | VXLAN mirrored traffic |
+| 9100 | TCP | Node Exporter | Prometheus metrics |
+| 443 | TCP/HTTPS | AWS APIs / GitHub as applicable | Secure API/web traffic |
+
+> The `5000` port belongs to the earlier Flask prototype deployment and should not be confused with the final public application path, which uses the ALB/HTTP architecture documented elsewhere.
+
+## Traffic-Mirroring Proof
+
+The Suricata sensor was validated with:
+
+```bash
+sudo timeout 20 tcpdump -ni ens5 'udp port 4789' -vv
+```
+
+Observed:
+
+```text
+VXLAN
+VNI 5174942
+10.0.104.170 → 10.0.47.60:4789
+```
+
+This is the concrete evidence for:
+
+```text
+Juice Shop ENI
+    ↓
+Traffic Mirror
+    ↓
+Suricata sensor
+```
+
 
 # 🧱 Network Security Boundaries
 
@@ -482,8 +671,9 @@ The repository should show that Juice Shop is not merely a diagram component —
 
 ## Live Juice Shop UI
 
-![Juice Shop App](juice-shop-live.png)
-
+> 📸 **Required screenshot**
+>
+> `docs/screenshots/application/juice-shop-live.png`
 
 Recommended screenshot content:
 
@@ -499,16 +689,16 @@ Capture the browser with the **real deployed application URL visible**.
 
 ---
 
-## Burp Suite / Web Testing Evidence
+## browser/curl-based testing / Web Testing Evidence
 
 > 📸 **Recommended screenshot**
 >
-> `docs/screenshots/application/burp-suite-target.png`
+> `docs/screenshots/application/web-testing-browser-curl.png`
 
 Show:
 
 ```text
-Burp Suite
+browser/curl-based testing
    ↓
 Target / Proxy / HTTP history
    ↓
@@ -1703,6 +1893,14 @@ sudo timeout 20 tcpdump -ni ens5 'udp port 4789' -vv
 
 ---
 
+
+## 🚫 Tools Not Used in the Implemented Workflow
+
+To keep this documentation faithful to the actual project:
+
+- **Burp Suite was not used as part of the implemented project workflow.**
+- Web attack demonstrations were performed using **Kali Linux, `curl`, the browser/application UI, AWS WAF evidence, Suricata, and Wazuh**.
+
 # 🧯 Troubleshooting & Challenges
 
 CloudOptima was not implemented without failures. The following problems were investigated and resolved.
@@ -2139,7 +2337,7 @@ Use evidence by layer.
 
 ```text
 juice-shop-live.png
-burp-suite-target.png
+web-testing-browser-curl.png
 ```
 
 ## IDP
