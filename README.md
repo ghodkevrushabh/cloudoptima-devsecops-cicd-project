@@ -287,21 +287,19 @@ This repository is intentionally documented in phases.
 
 ## 📸 Evidence
 
-### Security Operations
+### Security Operations [SIEM (Wazuh Dashboard)]
 
 ![SIEM (Wazuh Dashboard)](final-dashboard1.png)
 ![SIEM (Wazuh Dashboard)](final-dashboard2.png)
 
-### AWS WAF
+### AWS WAF Dashboard
 
 ![AWS WAF-dashboard](waf-dashboard1.png)
 ![AWS WAF-dashboard](waf-dashboard2.png)
 
-### Suricata
+### Suricata (Traffic-Mirror-vxlan)
 
-> **Screenshot placeholder**
->
-> `docs/screenshots/suricata/traffic-mirror-vxlan.png`
+![Suricata](traffic-mirror-vxlan.png)
 
 ### DevSecOps
 
