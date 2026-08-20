@@ -668,9 +668,7 @@ The repository should show that Juice Shop is not merely a diagram component —
 
 ## Live Juice Shop UI
 
-> 📸 **Required screenshot**
->
-> `docs/screenshots/application/juice-shop-live.png`
+(docs/screenshots/application/juice-shop-live.png)
 
 Recommended screenshot content:
 
