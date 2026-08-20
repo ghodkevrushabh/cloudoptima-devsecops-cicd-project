@@ -39,7 +39,7 @@ AWS Provisioning 🕵
 | AWS CloudTrail | ✅ Implemented |
 | Grafana / Prometheus / Loki observability | ✅ Implemented |
 | Five controlled web-attack demonstrations | ✅ Validated |
-| Final repository documentation | 🟡 In progress |
+
 
 ---
 
