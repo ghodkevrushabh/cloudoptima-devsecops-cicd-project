@@ -274,9 +274,9 @@ Status
 
 These are important screenshots for proving the IDP functionality.
 
-> 📸 `docs/screenshots/idp/flask-idp-portal.png`
+![Flask Portal](docs/screenshots/idp/flask-idp-portal.png)
 
-> 📸 `docs/screenshots/idp/deployment-requests.png`
+![Deployment Requests](docs/screenshots/idp/deployment-requests.png)
 
 ## What happened after submission
 
