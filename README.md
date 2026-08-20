@@ -800,11 +800,18 @@ AWSManagedRulesCommonRuleSet
 
 Screenshots:
 
-```text
-docs/screenshots/attacks/02-xss-request.png
-docs/screenshots/attacks/02-xss-403.png
-docs/screenshots/attacks/02-xss-waf-rule.png
-```
+Sending Cross Site Scripting (XSS) attack From Kali Linux. 
+
+![kali](docs\screenshots\waf\02-xss-request.png)
+
+Attack detected by WAF 
+
+![wazuh](docs/screenshots/wazuh/02-xss-403.png)
+
+WAF detected the XSS attack, and according to the rule (AWS#AWSManagedRulesSQLiRuleSet) it Blocked the attack
+
+![waf-rule](docs/screenshots/waf/02-sqli-waf-rule.png)
+
 
 ---
 
