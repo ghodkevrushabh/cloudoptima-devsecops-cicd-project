@@ -294,7 +294,8 @@ This repository is intentionally documented in phases.
 
 ### AWS WAF
 
-![AWS WAF-dashboard](waf-dashboard.png)
+![AWS WAF-dashboard](waf-dashboard1.png)
+![AWS WAF-dashboard](waf-dashboard2.png)
 
 ### Suricata
 
@@ -304,9 +305,7 @@ This repository is intentionally documented in phases.
 
 ### DevSecOps
 
-> **Screenshot placeholder**
->
-> `docs/screenshots/devsecops/jenkins-pipeline-success.png`
+![Jenkins Pipeline Success](cicd-pipeline.png)
 
 ### Observability
 
