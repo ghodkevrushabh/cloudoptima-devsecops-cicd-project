@@ -813,7 +813,6 @@ WAF detected the XSS attack, and according to the rule (AWS#AWSManagedRulesSQLiR
 ![waf-rule](docs/screenshots/waf/02-sqli-waf-rule.png)
 
 
----
 
 # 🧪 Attack 3 — LFI / Path Traversal
 
