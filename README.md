@@ -101,7 +101,7 @@ Prometheus + Node Exporter + Loki/Promtail
 
 # 🏗️ Overall Architecture
 
-![CloudOptima Overall Architecture](cloudoptima-overall-architecture.png)
+![CloudOptima Overall Architecture](docs/architecture/cloudoptima-overall-architecture.png)
 
 
 ### Architecture layers
