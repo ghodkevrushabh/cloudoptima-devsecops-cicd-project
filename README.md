@@ -800,7 +800,7 @@ AWSManagedRulesCommonRuleSet
 
 Screenshots:
 
-Sending Cross Site Scripting (XSS) attack From Kali Linux. 
+Sending Cross Site Scripting (Reflected - XSS) attack From Kali Linux. 
 
 ![kali](docs/screenshots/waf/02-xss-request.png)
 
@@ -808,9 +808,7 @@ Attack detected by WAF
 
 ![wazuh](docs/screenshots/waf/02-xss-403.png)
 
-WAF detected the XSS attack, and according to the rule (AWS#AWSManagedRulesSQLiRuleSet) it Blocked the attack
-
-![waf-rule](docs/screenshots/waf/02-xss-waf-rule.png)
+WAF detected the XSS attack, and according to the rule (AWS#AWSManagedRulesCommonRuleSet) it Blocked the attack
 
 
 
@@ -837,11 +835,13 @@ AWS#AWSManagedRulesLinuxRuleSet#LFI_URIPATH
 
 Screenshots:
 
-```text
-docs/screenshots/attacks/03-lfi-request.png
-docs/screenshots/attacks/03-lfi-403.png
-docs/screenshots/attacks/03-lfi-waf-rule.png
-```
+Sending Path Traversal attack From Kali Linux. 
+
+![kali](docs/screenshots/waf/03-lfi-request.png)
+
+Attack detected and blocked by WAF . according to the rule (AWS#AWSManagedRulesLinuxRuleSet#LFI_URIPATH) and it Blocked the attack
+
+![waf](docs/screenshots/waf/03-lfi-403.png)
 
 ---
 
@@ -875,11 +875,12 @@ Log4J
 
 Screenshots:
 
-```text
-docs/screenshots/attacks/04-log4j-request.png
-docs/screenshots/attacks/04-log4j-403.png
-docs/screenshots/attacks/04-log4j-waf-rule.png
-```
+
+Attack detected and blocked by WAF . according to the rule (AWSManagedRulesKnownBadInputsRuleSet) and it Blocked the attack
+1. 
+![waf](docs/screenshots/waf/04-bad-403.png)
+2. 
+![waf](docs/screenshots/waf/waf-dashboard1.png)
 
 ---
 
@@ -907,12 +908,15 @@ AWS#AWSManagedRulesCommonRuleSet#EC2MetaDataSSRF_QUERYARGUMENTS
 
 Screenshots:
 
-```text
-docs/screenshots/attacks/05-ssrf-request.png
-docs/screenshots/attacks/05-ssrf-403.png
-docs/screenshots/attacks/05-ssrf-waf-rule.png
-```
+Sending Server Side Request Forgery SSRF attack From Kali Linux. 
 
+![kali](docs/screenshots/waf/05-ssrf-request.png)
+
+Attack detected and blocked by WAF . according to the rule (AWS#AWSManagedRulesCommonRuleSet#EC2MetaDataSSRF_QUERYARGUMENTS) and it Blocked the attack
+1.
+![waf](docs/screenshots/waf/05-ssrf-403.png)
+2.
+![waf](docs/screenshots/waf/waf-dashboard1.png)
 ---
 
 # 🔎 WAF Sampled-Request Evidence
@@ -928,6 +932,13 @@ aws wafv2 get-sampled-requests \
   --max-items 20 \
   --region eu-north-1
 ```
+
+## WAF Dashboard
+
+screenshots:
+
+![waf](docs/screenshots/waf/waf-dashboard1.png)
+![waf](docs/screenshots/waf/waf-dashboard2.png)
 
 Important evidence fields:
 
@@ -961,14 +972,11 @@ RuleNameWithinRuleGroup
 
 ## Wazuh Dashboard
 
-Recommended screenshots:
+screenshots:
 
-```text
-docs/screenshots/wazuh/final-dashboard.png
-docs/screenshots/wazuh/ssh-bruteforce-5712.png
-docs/screenshots/wazuh/cloudtrail-80202.png
-docs/screenshots/wazuh/agent-inventory.png
-```
+![wazuh](docs/screenshots/wazuh/final-dashboard1.png)
+![wazuh](docs/screenshots/wazuh/final-dashboard2.png)
+
 
 Main dashboard panels:
 
@@ -1043,9 +1051,8 @@ Wazuh Dashboard
 
 Screenshot:
 
-```text
-docs/screenshots/wazuh/ssh-bruteforce-5712.png
-```
+
+![ssh-brute](docs/screenshots/wazuh/ssh1.png)
 
 ---
 
@@ -1059,9 +1066,6 @@ cloudoptima-security-trail
 
 S3 destination:
 
-```text
-cloudoptima-cloudtrail-411902101270-eunorth1
-```
 
 Wazuh flow:
 
@@ -1097,9 +1101,9 @@ aws cloudtrail get-trail-status \
 
 Screenshot:
 
-```text
-docs/screenshots/wazuh/cloudtrail-80202.png
-```
+
+![cloud-trail](docs/screenshots/wazuh/cloud-trail.png)
+
 
 ---
 
@@ -1179,9 +1183,8 @@ VNI 5174942
 
 Screenshot:
 
-```text
-docs/screenshots/suricata/traffic-mirror-vxlan.png
-```
+![traffic-mirror-vxlan](docs/screenshots/suricata/traffic-mirror-vxlan.png)
+
 
 Recommended second screenshot:
 
@@ -1325,11 +1328,15 @@ logs
 
 Screenshots:
 
-```text
-docs/screenshots/grafana/final-observability-dashboard.png
-docs/screenshots/grafana/operational-logs.png
-docs/screenshots/grafana/alert-rules.png
-```
+1. final-observability-dashboard
+![final-observability-dashboard](docs/screenshots/grafana/final-observability-dashboard.png)
+
+2. operational-logs
+![operational-logs](docs/screenshots/grafana/operational-logs.png)
+
+3. alert-rules
+![alert-rules](docs/screenshots/grafana/alert-rules.png)
+
 
 ---
 
@@ -2247,135 +2254,8 @@ CloudOptima/
 └── trivy.yaml
 ```
 
----
 
-# 📸 Evidence / Screenshot Plan
 
-Do **not** try to prove the entire project with one giant screenshot.
-
-Use evidence by layer.
-
-## Application
-
-```text
-juice-shop-live.png
-web-testing-browser-curl.png
-```
-
-## IDP
-
-```text
-flask-portal.png
-postgresql.png
-terraform-generator.png
-ansible-generator.png
-github-integration.png
-```
-
-## DevSecOps
-
-```text
-jenkins-pipeline.png
-sonarqube.png
-gitleaks.png
-terraform-plan.png
-checkov.png
-infracost.png
-opa.png
-docker-build.png
-trivy.png
-ecr.png
-ansible-run.png
-```
-
-## AWS
-
-```text
-vpc.png
-subnets.png
-security-groups.png
-alb.png
-waf.png
-cloudtrail.png
-traffic-mirroring.png
-```
-
-## Security
-
-```text
-waf-five-attacks.png
-suricata-vxlan.png
-suricata-sqli.png
-wazuh-agents.png
-wazuh-ssh-bruteforce.png
-wazuh-cloudtrail.png
-wazuh-dashboard.png
-```
-
-## Observability
-
-```text
-prometheus.png
-grafana-dashboard.png
-grafana-alerts.png
-loki.png
-```
-
----
-
-# 🎥 Recommended Video Strategy
-
-A single polished video is better than five separate long attack videos.
-
-### Video 1 — Full Platform Walkthrough
-
-```text
-3–7 minutes
-```
-
-Show:
-
-```text
-IDP
-→ GitHub
-→ Jenkins
-→ AWS
-→ WAF
-→ Juice Shop
-→ Wazuh
-→ Grafana
-```
-
-### Video 2 — Security Demonstration
-
-```text
-3–5 minutes
-```
-
-Show:
-
-```text
-Normal request
-→ SQLi
-→ 403
-→ WAF evidence
-→ Wazuh/Suricata
-→ CloudTrail
-```
-
-Then mention the other four validated attacks and their evidence.
-
-### Repository rule
-
-```text
-Screenshots
-→ permanent proof
-
-Video
-→ fast human demonstration
-```
-
----
 
 # 🛡️ Security Control Matrix
 
@@ -2543,129 +2423,6 @@ Loki
 Promtail
 Grafana
 ```
-
----
-
-# 🎤 Recruiter Demonstration
-
-## 5-Minute Demo
-
-```text
-1. Overall architecture
-2. IDP
-3. Jenkins pipeline
-4. Wazuh dashboard
-5. WAF attack dashboard
-6. Live SQLi
-7. 403 response
-8. Matching WAF rule
-9. Wazuh/Suricata evidence
-10. CloudTrail event
-```
-
-## 15-Minute Technical Demo
-
-```text
-1. IDP
-2. GitHub
-3. Jenkins
-4. Security gates
-5. Terraform/Ansible
-6. AWS network
-7. WAF
-8. ALB
-9. Juice Shop
-10. Traffic Mirror
-11. Suricata
-12. Wazuh
-13. CloudTrail
-14. Grafana/Loki/Prometheus
-15. Five attack cases
-16. Troubleshooting example
-17. Production roadmap
-```
-
----
-
-# 🔐 Public Repository Security Checklist
-
-Before pushing to GitHub:
-
-```text
-[ ] No AWS access keys
-[ ] No AWS secret keys
-[ ] No passwords
-[ ] No private keys
-[ ] No session tokens
-[ ] No Wazuh client.keys
-[ ] No database credentials
-[ ] No .env secrets
-[ ] No Terraform state with secrets
-[ ] No Jenkins credentials
-[ ] Screenshots sanitized
-[ ] GitLeaks clean
-[ ] git diff reviewed
-[ ] .gitignore reviewed
-```
-
-Recommended pre-push commands:
-
-```bash
-git status
-git diff
-gitleaks detect
-```
-
----
-
-# 📌 Repository Practice
-
-Repository source remains the source of truth.
-
-Do not make normal repository commits from the Jenkins workspace.
-
-Preferred:
-
-```text
-Developer / normal Git clone
-          ↓
-       git commit
-          ↓
-      git push
-          ↓
-       GitHub
-          ↓
-   Jenkins checkout
-          ↓
-       Pipeline
-```
-
-This avoids detached-HEAD and CI-workspace state problems.
-
----
-
-# 📚 Phase Documentation
-
-The detailed implementation history should remain available under `docs/phases/`.
-
-Recommended:
-
-```text
-Phase 1  → Executive Overview
-Phase 2  → Internal Developer Platform
-Phase 3  → DevSecOps Pipeline
-Phase 4  → AWS Infrastructure & Networking
-Phase 5  → Security Operations
-Phase 6  → Observability
-Phase 7  → Attack Laboratory
-Phase 8  → Troubleshooting
-Phase 9  → Security Review
-Phase 10 → GitHub Packaging
-```
-
----
-
-# ⭐ Final Project Statement
 
 CloudOptima demonstrates a complete engineering lifecycle:
 
